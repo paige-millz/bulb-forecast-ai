@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Flower2, Loader2, Download } from "lucide-react";
+import { Flower2, Loader2, Download, Trash2, AlertTriangle, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "@/hooks/use-toast";
 import { ExcelUpload } from "@/components/ExcelUpload";
 import { WeatherUpload } from "@/components/WeatherUpload";
@@ -21,13 +33,16 @@ import {
   computeEasterDate,
   formatDate,
   fetchBulbTypes,
+  fetchBulbRecordCount,
   fetchWeatherCount,
-  generateRecommendations,
-  fetchWeatherForChart,
+  callBulbRecommendations,
+  edgeResponseToRecommendations,
+  clearAllBulbRecords,
   exportCSV,
   exportJSON,
   downloadFile,
   type Recommendation,
+  type EdgeFunctionResponse,
 } from "@/lib/bulb-utils";
 
 function getNextEasterYear(): number {
@@ -42,21 +57,26 @@ const Index = () => {
   const [selectedBulb, setSelectedBulb] = useState("All");
   const [modelType, setModelType] = useState<"overall" | "by-year">("overall");
   const [weatherCount, setWeatherCount] = useState<number | null>(null);
+  const [bulbCount, setBulbCount] = useState(0);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [chartData, setChartData] = useState<{ dbe: number; tavg_f: number }[]>([]);
   const [generating, setGenerating] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [edgeResponse, setEdgeResponse] = useState<EdgeFunctionResponse | null>(null);
 
   const easter = computeEasterDate(targetYear);
   const easterStr = formatDate(easter);
 
   const refreshData = useCallback(async () => {
-    const [types, wCount] = await Promise.all([fetchBulbTypes(), fetchWeatherCount()]);
+    const [types, wCount, bCount] = await Promise.all([
+      fetchBulbTypes(),
+      fetchWeatherCount(),
+      fetchBulbRecordCount(),
+    ]);
     setBulbTypes(types);
     setWeatherCount(wCount);
-    if (types.length > 0 && selectedBulb === "All") {
-      // keep All
-    }
-  }, [selectedBulb]);
+    setBulbCount(bCount);
+  }, []);
 
   useEffect(() => {
     refreshData();
@@ -64,20 +84,43 @@ const Index = () => {
 
   const handleGenerate = async () => {
     setGenerating(true);
+    setEdgeResponse(null);
     try {
-      const [recs, weather] = await Promise.all([
-        generateRecommendations(targetYear, selectedBulb, modelType),
-        fetchWeatherForChart(targetYear),
-      ]);
-      setRecommendations(recs);
-      setChartData(weather);
-      if (recs.length === 0) {
-        toast({ title: "No data", description: "No matching bulb records found.", variant: "destructive" });
+      const resp = await callBulbRecommendations(targetYear, selectedBulb, modelType);
+      if (resp.error) {
+        toast({ title: "Error", description: resp.error, variant: "destructive" });
+        setGenerating(false);
+        return;
       }
+      setEdgeResponse(resp);
+      const recs = edgeResponseToRecommendations(resp);
+      setRecommendations(recs);
+      // Map chartSeries to our chart format
+      const chart = resp.chartSeries.map((c) => ({
+        dbe: c.daysBeforeEaster,
+        tavg_f: c.predictedTavgF,
+      }));
+      setChartData(chart);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleClearData = async () => {
+    setClearing(true);
+    try {
+      await clearAllBulbRecords();
+      toast({ title: "Data cleared", description: "All historical records removed." });
+      setRecommendations([]);
+      setChartData([]);
+      setEdgeResponse(null);
+      await refreshData();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setClearing(false);
     }
   };
 
@@ -86,14 +129,45 @@ const Index = () => {
       {/* Header */}
       <header className="border-b bg-card">
         <div className="container max-w-6xl py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10">
-              <Flower2 className="h-6 w-6 text-primary" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10">
+                <Flower2 className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-2xl leading-tight">Easter Bulb Removal Planner</h1>
+                <p className="text-sm text-muted-foreground">Predict optimal cooler removal timing</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl leading-tight">Easter Bulb Removal Planner</h1>
-              <p className="text-sm text-muted-foreground">Predict optimal cooler removal timing</p>
-            </div>
+
+            {bulbCount > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/5">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Clear All Data
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear All Historical Data?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete all {bulbCount} bulb records. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleClearData}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      disabled={clearing}
+                    >
+                      {clearing ? "Clearing..." : "Delete All Records"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         </div>
       </header>
@@ -102,6 +176,25 @@ const Index = () => {
         {/* Weather upload — only when empty */}
         {weatherCount === 0 && (
           <WeatherUpload onUploadComplete={refreshData} />
+        )}
+
+        {/* Warnings/Notices */}
+        {edgeResponse?.smallDatasetWarning && (
+          <Alert className="border-accent/50 bg-accent/10">
+            <AlertTriangle className="h-4 w-4 text-accent" />
+            <AlertDescription className="text-accent-foreground">
+              {edgeResponse.smallDatasetWarning}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {edgeResponse?.fallbackNotice && (
+          <Alert className="border-primary/30 bg-primary/5">
+            <Info className="h-4 w-4 text-primary" />
+            <AlertDescription>
+              {edgeResponse.fallbackNotice}
+            </AlertDescription>
+          </Alert>
         )}
 
         {/* Input Row */}
