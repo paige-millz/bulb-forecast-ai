@@ -18,6 +18,21 @@ export interface WeatherDaily {
   tmax_f?: number | null;
 }
 
+export interface EdgeFunctionResponse {
+  targetYear: number;
+  easterDate: string;
+  bulbType: string;
+  modelType: string;
+  avgDBE: number;
+  recommendedRemovalDate: string;
+  recommendedWindow: { start: string; end: string };
+  recordsUsed: number;
+  chartSeries: { daysBeforeEaster: number; predictedTavgF: number }[];
+  smallDatasetWarning: string | null;
+  fallbackNotice: string | null;
+  error?: string;
+}
+
 export interface Recommendation {
   bulb_type: string;
   easter_date: string;
@@ -68,8 +83,14 @@ export async function fetchBulbTypes(): Promise<string[]> {
     .select("bulb_type")
     .order("bulb_type");
   if (!data) return [];
-  const unique = [...new Set(data.map((r) => r.bulb_type))];
-  return unique;
+  return [...new Set(data.map((r) => r.bulb_type))];
+}
+
+export async function fetchBulbRecordCount(): Promise<number> {
+  const { count } = await supabase
+    .from("bulb_records")
+    .select("*", { count: "exact", head: true });
+  return count ?? 0;
 }
 
 export async function fetchWeatherCount(): Promise<number> {
@@ -81,12 +102,16 @@ export async function fetchWeatherCount(): Promise<number> {
 
 export async function clearAndInsertBulbRecords(records: BulbRecord[]) {
   await supabase.from("bulb_records").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-  // batch insert in chunks of 500
   for (let i = 0; i < records.length; i += 500) {
     const chunk = records.slice(i, i + 500).map(({ id, ...r }) => r);
     const { error } = await supabase.from("bulb_records").insert(chunk);
     if (error) throw error;
   }
+}
+
+export async function clearAllBulbRecords() {
+  const { error } = await supabase.from("bulb_records").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  if (error) throw error;
 }
 
 export async function upsertWeatherData(rows: WeatherDaily[]) {
@@ -97,86 +122,29 @@ export async function upsertWeatherData(rows: WeatherDaily[]) {
   }
 }
 
-export async function generateRecommendations(
+export async function callBulbRecommendations(
   targetYear: number,
   bulbType: string,
-  modelType: "overall" | "by-year"
-): Promise<Recommendation[]> {
-  // Fetch records
-  let query = supabase.from("bulb_records").select("*");
-  if (bulbType !== "All") {
-    query = query.eq("bulb_type", bulbType);
-  }
-  const { data: records } = await query;
-  if (!records || records.length === 0) return [];
-
-  const easter = computeEasterDate(targetYear);
-
-  if (bulbType === "All") {
-    // Group by bulb_type
-    const groups: Record<string, typeof records> = {};
-    for (const r of records) {
-      if (!groups[r.bulb_type]) groups[r.bulb_type] = [];
-      groups[r.bulb_type].push(r);
-    }
-    return Object.entries(groups).map(([bt, recs]) =>
-      computeRec(bt, recs, easter, modelType, targetYear)
-    );
-  }
-
-  return [computeRec(bulbType, records, easter, modelType, targetYear)];
+  modelType: string
+): Promise<EdgeFunctionResponse> {
+  const { data, error } = await supabase.functions.invoke("bulb-recommendations", {
+    body: { targetYear, bulbType, modelType },
+  });
+  if (error) throw error;
+  return data as EdgeFunctionResponse;
 }
 
-function computeRec(
-  bulbType: string,
-  records: any[],
-  easter: Date,
-  modelType: "overall" | "by-year",
-  targetYear: number
-): Recommendation {
-  let filtered = records;
-  if (modelType === "by-year") {
-    // weight more recent years more heavily — but if only one year matches, use all
-    const yearRecords = records.filter((r) => r.year === targetYear - 1);
-    if (yearRecords.length > 0) filtered = yearRecords;
-  }
-
-  const avgDbe =
-    filtered.reduce((sum: number, r: any) => sum + Number(r.dbe), 0) / filtered.length;
-  const roundedDbe = Math.round(avgDbe);
-  const removal = addDays(easter, -roundedDbe);
-
-  return {
-    bulb_type: bulbType,
-    easter_date: formatDate(easter),
-    avg_dbe: Math.round(avgDbe * 10) / 10,
-    recommended_removal: formatDate(removal),
-    window_start: formatDate(addDays(removal, -2)),
-    window_end: formatDate(addDays(removal, 2)),
-    records_used: filtered.length,
-    model_type: modelType === "overall" ? "Overall" : "By-Year",
-  };
-}
-
-export async function fetchWeatherForChart(
-  targetYear: number
-): Promise<{ dbe: number; tavg_f: number }[]> {
-  const easter = computeEasterDate(targetYear);
-  const startDate = addDays(easter, -60);
-
-  const { data } = await supabase
-    .from("weather_daily")
-    .select("date, tavg_f")
-    .gte("date", formatDate(startDate))
-    .lte("date", formatDate(easter))
-    .order("date");
-
-  if (!data) return [];
-
-  return data.map((r) => ({
-    dbe: diffDays(easter, new Date(r.date)),
-    tavg_f: Number(r.tavg_f),
-  }));
+export function edgeResponseToRecommendations(resp: EdgeFunctionResponse): Recommendation[] {
+  return [{
+    bulb_type: resp.bulbType,
+    easter_date: resp.easterDate,
+    avg_dbe: resp.avgDBE,
+    recommended_removal: resp.recommendedRemovalDate,
+    window_start: resp.recommendedWindow.start,
+    window_end: resp.recommendedWindow.end,
+    records_used: resp.recordsUsed,
+    model_type: resp.modelType === "overall" ? "Overall" : "By-Year",
+  }];
 }
 
 export function exportCSV(recommendations: Recommendation[]): string {
