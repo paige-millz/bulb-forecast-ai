@@ -138,32 +138,64 @@ Deno.serve(async (req) => {
       notes.push("High variability in historical timing. Consider reviewing data quality.");
     }
 
-    // 8. Weather data integration
+    // 8. Weather-informed adjustment
+    //    Correlate historical weather with actual DBE to adjust the recommendation
     let weatherContext: any = null;
-    try {
-      // Query weather data for the removal-to-Easter window in past years
-      const removalMonth = recommendedDate.getMonth() + 1;
-      const easterMonth = easter.getMonth() + 1;
+    let weatherAdjustedDBE: number | null = null;
+    let weatherAdjustedDate: Date | null = null;
+    let weatherAdjustedWindow: { start: Date; end: Date } | null = null;
 
-      // Get all weather data we have
+    try {
       const { data: weatherData, error: weatherErr } = await supabase
         .from("weather_daily")
         .select("date, tavg_f, tmax_f, tmin_f")
         .order("date", { ascending: true });
 
       if (!weatherErr && weatherData && weatherData.length > 0) {
-        // Calculate degree hours above 40F for the recommended window
-        // Look at historical weather for the same calendar window
+        // For each historical record that has a valid DBE AND removal_date,
+        // calculate the avg temp during its actual removal-to-Easter window
+        const recordsWithWeather: { dbe: number; avgTemp: number; degreeHours: number; year: number }[] = [];
+
+        for (const rec of records!) {
+          const recDBE = rec.dbe && Number(rec.dbe) > 0
+            ? Number(rec.dbe)
+            : rec.easter_date && rec.removal_date
+              ? Math.round((new Date(rec.easter_date).getTime() - new Date(rec.removal_date).getTime()) / 86400000)
+              : null;
+          if (!recDBE || recDBE <= 0 || !rec.removal_date || !rec.easter_date) continue;
+
+          const removalDate = new Date(rec.removal_date);
+          const easterDateRec = new Date(rec.easter_date);
+
+          // Find weather data for this record's actual removal-to-Easter window
+          const windowDays = weatherData.filter((w) => {
+            const wd = new Date(w.date);
+            return wd >= removalDate && wd <= easterDateRec;
+          });
+
+          if (windowDays.length >= 5) { // need at least 5 days of weather data
+            const avgTemp = windowDays.reduce((s, d) => s + Number(d.tavg_f), 0) / windowDays.length;
+            const degreeHours = windowDays.reduce((s, d) => {
+              const t = Number(d.tavg_f);
+              return s + (t > 40 ? (t - 40) * 24 : 0);
+            }, 0);
+            recordsWithWeather.push({
+              dbe: recDBE,
+              avgTemp: Math.round(avgTemp * 10) / 10,
+              degreeHours: Math.round(degreeHours),
+              year: rec.year,
+            });
+          }
+        }
+
+        // Build year-level stats for the recommended window (DOY-based)
         const removalDOY = getDayOfYear(recommendedDate);
         const easterDOY = getDayOfYear(easter);
-
-        // Group weather by year and filter to the removal-to-Easter window
         const yearGroups: Record<number, { tavg_f: number; date: string }[]> = {};
         for (const w of weatherData) {
           const wDate = new Date(w.date);
           const wYear = wDate.getFullYear();
           const wDOY = getDayOfYear(wDate);
-          // Include days in the removal-to-Easter window (by day-of-year)
           if (wDOY >= removalDOY && wDOY <= easterDOY) {
             if (!yearGroups[wYear]) yearGroups[wYear] = [];
             yearGroups[wYear].push({ tavg_f: Number(w.tavg_f), date: w.date });
@@ -171,53 +203,99 @@ Deno.serve(async (req) => {
         }
 
         const yearKeys = Object.keys(yearGroups).map(Number);
-        if (yearKeys.length > 0) {
-          // Calculate avg temp and degree hours for each year in the window
-          const yearStats = yearKeys.map((yr) => {
-            const days = yearGroups[yr];
-            const avgTemp = days.reduce((s, d) => s + d.tavg_f, 0) / days.length;
-            // Degree hours above 40F: sum of (temp - 40) * 24 for each day where temp > 40
-            const degreeHours = days.reduce((s, d) => {
-              return s + (d.tavg_f > 40 ? (d.tavg_f - 40) * 24 : 0);
-            }, 0);
-            return { year: yr, avgTemp: Math.round(avgTemp * 10) / 10, degreeHours: Math.round(degreeHours), days: days.length };
-          });
+        const yearStats = yearKeys.map((yr) => {
+          const days = yearGroups[yr];
+          const avgTemp = days.reduce((s, d) => s + d.tavg_f, 0) / days.length;
+          const degreeHours = days.reduce((s, d) => s + (d.tavg_f > 40 ? (d.tavg_f - 40) * 24 : 0), 0);
+          return { year: yr, avgTemp: Math.round(avgTemp * 10) / 10, degreeHours: Math.round(degreeHours), days: days.length };
+        });
 
-          const overallAvgTemp = yearStats.reduce((s, y) => s + y.avgTemp, 0) / yearStats.length;
-          const overallAvgDegreeHours = yearStats.reduce((s, y) => s + y.degreeHours, 0) / yearStats.length;
+        const overallAvgTemp = yearStats.length > 0 ? yearStats.reduce((s, y) => s + y.avgTemp, 0) / yearStats.length : null;
+        const overallAvgDegreeHours = yearStats.length > 0 ? yearStats.reduce((s, y) => s + y.degreeHours, 0) / yearStats.length : null;
+        const currentYearStats = yearStats.find((y) => y.year === targetYear);
 
-          // Check if current year data exists
-          const currentYearStats = yearStats.find((y) => y.year === targetYear);
+        weatherContext = {
+          historicalAvgTemp: overallAvgTemp ? Math.round(overallAvgTemp * 10) / 10 : null,
+          historicalAvgDegreeHours: overallAvgDegreeHours ? Math.round(overallAvgDegreeHours) : null,
+          yearsWithData: yearKeys.length,
+          yearStats,
+          currentYear: currentYearStats || null,
+          correlation: null as any,
+        };
 
-          weatherContext = {
-            historicalAvgTemp: Math.round(overallAvgTemp * 10) / 10,
-            historicalAvgDegreeHours: Math.round(overallAvgDegreeHours),
-            yearsWithData: yearKeys.length,
-            yearStats,
-            currentYear: currentYearStats || null,
+        // Compute correlation between avg temp and DBE from paired historical data
+        if (recordsWithWeather.length >= 3) {
+          const n = recordsWithWeather.length;
+          const meanTemp = recordsWithWeather.reduce((s, r) => s + r.avgTemp, 0) / n;
+          const meanDBE = recordsWithWeather.reduce((s, r) => s + r.dbe, 0) / n;
+          let sumXY = 0, sumX2 = 0, sumY2 = 0;
+          for (const r of recordsWithWeather) {
+            const dx = r.avgTemp - meanTemp;
+            const dy = r.dbe - meanDBE;
+            sumXY += dx * dy;
+            sumX2 += dx * dx;
+            sumY2 += dy * dy;
+          }
+          const r = sumX2 > 0 && sumY2 > 0 ? sumXY / Math.sqrt(sumX2 * sumY2) : 0;
+          const slope = sumX2 > 0 ? sumXY / sumX2 : 0; // days per °F
+          const intercept = meanDBE - slope * meanTemp;
+
+          weatherContext.correlation = {
+            r: Math.round(r * 1000) / 1000,
+            slope: Math.round(slope * 100) / 100,
+            intercept: Math.round(intercept * 10) / 10,
+            nPaired: n,
+            pairedData: recordsWithWeather,
           };
 
-          // Add weather-informed notes
-          if (currentYearStats) {
-            const tempDiff = currentYearStats.avgTemp - overallAvgTemp;
-            if (tempDiff > 3) {
-              notes.push(`Current year is ${Math.round(tempDiff)}°F warmer than average in the removal window. Consider removing earlier.`);
-            } else if (tempDiff < -3) {
-              notes.push(`Current year is ${Math.round(Math.abs(tempDiff))}°F cooler than average in the removal window. Consider removing later.`);
+          // If current year weather is available, use regression to adjust
+          if (currentYearStats && Math.abs(r) >= 0.3) {
+            const predictedDBE = Math.round(slope * currentYearStats.avgTemp + intercept);
+            if (predictedDBE > 0 && predictedDBE < 60) { // sanity bounds
+              weatherAdjustedDBE = predictedDBE;
+              weatherAdjustedDate = addDays(easter, -predictedDBE);
+              // Adjusted window: ±IQR/2 around the adjusted date
+              const halfIQR = Math.round(iqr / 2) || 1;
+              weatherAdjustedWindow = {
+                start: addDays(easter, -(predictedDBE + halfIQR)),
+                end: addDays(easter, -(predictedDBE - halfIQR)),
+              };
+              const diff = predictedDBE - roundedMedian;
+              if (Math.abs(diff) >= 1) {
+                const direction = diff > 0 ? "earlier" : "later";
+                notes.push(
+                  `Weather-adjusted: Based on ${currentYearStats.avgTemp}°F avg temp this year (historical avg: ${Math.round(overallAvgTemp! * 10) / 10}°F), the model suggests removing ${Math.abs(diff)} day(s) ${direction} than the historical median (correlation r=${Math.round(r * 100) / 100}, ${n} paired records).`
+                );
+              } else {
+                notes.push(`Current year temps align with historical averages — no weather adjustment needed.`);
+              }
             }
+          } else if (!currentYearStats) {
+            notes.push(`No weather data for ${targetYear} yet. With weather data, the model can adjust the recommendation by ~${Math.round(Math.abs(slope) * 10) / 10} day(s) per °F difference (based on ${n} paired records, r=${Math.round(r * 100) / 100}).`);
           } else {
-            notes.push("No weather data available for the target year yet. Historical averages used for context.");
+            notes.push(`Weather correlation too weak to adjust (r=${Math.round(r * 100) / 100}). Using historical DBE median.`);
           }
+        } else if (recordsWithWeather.length > 0) {
+          notes.push(`Only ${recordsWithWeather.length} year(s) have paired weather+DBE data. Need ≥3 for weather-adjusted predictions.`);
+        } else if (yearKeys.length > 0) {
+          notes.push("Weather data exists but doesn't overlap with bulb record dates. Upload matching years for weather-adjusted insights.");
+        } else {
+          notes.push("No weather data synced yet. Upload or sync weather data for temperature-adjusted insights.");
         }
       } else if (!weatherErr && (!weatherData || weatherData.length === 0)) {
         notes.push("No weather data synced yet. Upload or sync weather data for temperature-adjusted insights.");
       }
     } catch (_weatherError) {
-      // Weather integration is optional — don't fail the whole request
       notes.push("Could not load weather data. Recommendations based on historical DBE only.");
     }
 
-    // 9. Build response
+    // 9. Use weather-adjusted values if available, otherwise fallback to median
+    const finalDBE = weatherAdjustedDBE ?? roundedMedian;
+    const finalDate = weatherAdjustedDate ?? recommendedDate;
+    const finalWindowStart = weatherAdjustedWindow?.start ?? windowStart;
+    const finalWindowEnd = weatherAdjustedWindow?.end ?? windowEnd;
+
+    // 10. Build response
     const response = {
       targetYear,
       easterDate,
@@ -228,11 +306,14 @@ Deno.serve(async (req) => {
       p75DBE: Math.round(p75DBE * 10) / 10,
       iqr,
       confidence,
-      recommendedRemovalDate: fmt(recommendedDate),
+      recommendedRemovalDate: fmt(finalDate),
       recommendedWindow: {
-        start: fmt(windowStart),
-        end: fmt(windowEnd),
+        start: fmt(finalWindowStart),
+        end: fmt(finalWindowEnd),
       },
+      weatherAdjusted: weatherAdjustedDBE !== null,
+      weatherAdjustedDBE: weatherAdjustedDBE,
+      baselineDBE: roundedMedian,
       dbeValues: sorted,
       notes,
       weatherContext,
