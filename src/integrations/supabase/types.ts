@@ -16,34 +16,52 @@ export type Database = {
     Tables: {
       bulb_records: {
         Row: {
+          avg_temp_from_removal_f: number | null
           bulb_type: string
           created_at: string
-          dbe: number
+          dbe: number | null
+          degree_hours_above_40f: number | null
           easter_date: string
+          grower_notes: string | null
           id: string
           notes: string | null
-          removal_date: string
+          removal_date: string | null
+          ship_date: string | null
           year: number
+          yield_notes: string | null
+          yield_quality: string | null
         }
         Insert: {
+          avg_temp_from_removal_f?: number | null
           bulb_type: string
           created_at?: string
-          dbe: number
+          dbe?: number | null
+          degree_hours_above_40f?: number | null
           easter_date: string
+          grower_notes?: string | null
           id?: string
           notes?: string | null
-          removal_date: string
+          removal_date?: string | null
+          ship_date?: string | null
           year: number
+          yield_notes?: string | null
+          yield_quality?: string | null
         }
         Update: {
+          avg_temp_from_removal_f?: number | null
           bulb_type?: string
           created_at?: string
-          dbe?: number
+          dbe?: number | null
+          degree_hours_above_40f?: number | null
           easter_date?: string
+          grower_notes?: string | null
           id?: string
           notes?: string | null
-          removal_date?: string
+          removal_date?: string | null
+          ship_date?: string | null
           year?: number
+          yield_notes?: string | null
+          yield_quality?: string | null
         }
         Relationships: []
       }
@@ -51,6 +69,7 @@ export type Database = {
         Row: {
           date: string
           id: number
+          source: string | null
           tavg_f: number
           tmax_f: number | null
           tmin_f: number | null
@@ -58,6 +77,7 @@ export type Database = {
         Insert: {
           date: string
           id?: never
+          source?: string | null
           tavg_f: number
           tmax_f?: number | null
           tmin_f?: number | null
@@ -65,6 +85,7 @@ export type Database = {
         Update: {
           date?: string
           id?: never
+          source?: string | null
           tavg_f?: number
           tmax_f?: number | null
           tmin_f?: number | null

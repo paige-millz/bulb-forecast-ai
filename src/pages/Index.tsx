@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { Flower2, Loader2, Download, Trash2, AlertTriangle } from "lucide-react";
+import { Flower2, Loader2, Download, Trash2, AlertTriangle, CloudSun } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +26,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "@/hooks/use-toast";
 import { ExcelUpload } from "@/components/ExcelUpload";
+import { WeatherUpload } from "@/components/WeatherUpload";
 import { KPIPanel } from "@/components/KPIPanel";
 import { RecommendationsTable } from "@/components/RecommendationsTable";
 import { DBEDistributionChart } from "@/components/DBEDistributionChart";
@@ -167,7 +169,10 @@ const Index = () => {
 
         {/* Input Row */}
         <div className="grid md:grid-cols-[1fr_1fr] gap-6">
-          <ExcelUpload onUploadComplete={refreshData} />
+          <div className="space-y-4">
+            <ExcelUpload onUploadComplete={refreshData} />
+            <WeatherUpload onUploadComplete={refreshData} />
+          </div>
 
           <Card>
             <CardHeader className="pb-3">
@@ -216,7 +221,7 @@ const Index = () => {
               </Button>
 
               {bulbTypes.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center">Upload Excel data first</p>
+                <p className="text-xs text-muted-foreground text-center">Upload data first</p>
               )}
             </CardContent>
           </Card>

@@ -93,14 +93,18 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 4. Ensure DBE values exist
-    const dbeValues: number[] = records.map((r: any) => {
-      if (r.dbe && Number(r.dbe) > 0) return Number(r.dbe);
-      // Compute from dates
-      const ed = new Date(r.easter_date);
-      const rd = new Date(r.removal_date);
-      return Math.round((ed.getTime() - rd.getTime()) / 86400000);
-    });
+    // 4. Ensure DBE values exist — filter out records without removal dates
+    const dbeValues: number[] = records
+      .map((r: any) => {
+        if (r.dbe && Number(r.dbe) > 0) return Number(r.dbe);
+        if (r.easter_date && r.removal_date) {
+          const ed = new Date(r.easter_date);
+          const rd = new Date(r.removal_date);
+          return Math.round((ed.getTime() - rd.getTime()) / 86400000);
+        }
+        return null;
+      })
+      .filter((v): v is number => v != null && v > 0);
 
     // 5. Compute robust statistics
     const sorted = [...dbeValues].sort((a, b) => a - b);

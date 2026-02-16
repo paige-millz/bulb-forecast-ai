@@ -5,8 +5,14 @@ export interface BulbRecord {
   year: number;
   bulb_type: string;
   easter_date: string;
-  removal_date: string;
-  dbe: number;
+  removal_date: string | null;
+  dbe: number | null;
+  ship_date?: string | null;
+  avg_temp_from_removal_f?: number | null;
+  degree_hours_above_40f?: number | null;
+  yield_notes?: string | null;
+  yield_quality?: string | null;
+  grower_notes?: string | null;
   notes?: string | null;
 }
 
