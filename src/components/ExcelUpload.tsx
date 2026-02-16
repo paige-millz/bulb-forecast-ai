@@ -61,9 +61,14 @@ export function ExcelUpload({ onUploadComplete }: ExcelUploadProps) {
       });
 
       // Validate: need at least year, bulb_type, and easter_date
+      // Also filter out junk rows with no removal_date AND no dbe
       const valid = records.filter(
-        (r) => r.year > 0 && r.bulb_type && r.easter_date
+        (r) => r.year > 0 && r.bulb_type && r.easter_date && (r.removal_date || r.dbe)
       );
+      const skipped = records.length - valid.length;
+      if (skipped > 0) {
+        console.log(`Skipped ${skipped} rows without removal date or DBE`);
+      }
 
       if (valid.length === 0) {
         toast({ title: "No valid rows", description: "Check column headers: Year, Bulb Type, Easter Date, Removal Date", variant: "destructive" });
@@ -74,9 +79,10 @@ export function ExcelUpload({ onUploadComplete }: ExcelUploadProps) {
 
       const years = [...new Set(valid.map((r) => r.year))].sort();
       const types = [...new Set(valid.map((r) => r.bulb_type))];
+      const skippedCount = records.length - valid.length;
       toast({
         title: "Upload complete",
-        description: `${valid.length} records imported. Years: ${years[0]}–${years[years.length - 1]}. ${types.length} bulb types.`,
+        description: `${valid.length} records imported${skippedCount > 0 ? ` (${skippedCount} rows skipped — no removal date or DBE)` : ""}. Years: ${years[0]}–${years[years.length - 1]}. ${types.length} bulb types.`,
       });
       onUploadComplete();
     } catch (err: any) {

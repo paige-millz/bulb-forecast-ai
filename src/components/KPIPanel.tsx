@@ -1,10 +1,17 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, TrendingDown, CalendarCheck, CalendarRange, Database, Shield } from "lucide-react";
+import { Calendar, TrendingDown, CalendarCheck, CalendarRange, Database, Shield, Thermometer, Clock } from "lucide-react";
 import type { EdgeFunctionResponse } from "@/lib/bulb-utils";
 
+interface WeatherContext {
+  historicalAvgTemp: number;
+  historicalAvgDegreeHours: number;
+  yearsWithData: number;
+  currentYear: { avgTemp: number; degreeHours: number; days: number } | null;
+}
+
 interface KPIPanelProps {
-  data: EdgeFunctionResponse | null;
+  data: (EdgeFunctionResponse & { weatherContext?: WeatherContext | null }) | null;
   easterDate: string;
 }
 
@@ -15,6 +22,8 @@ const confidenceColor: Record<string, string> = {
 };
 
 export function KPIPanel({ data, easterDate }: KPIPanelProps) {
+  const wc = (data as any)?.weatherContext as WeatherContext | null | undefined;
+
   const items = [
     { label: "Easter Date", icon: Calendar, value: data?.easterDate ?? easterDate ?? "—" },
     { label: "Records Used", icon: Database, value: data ? String(data.nRecords) : "—" },
@@ -30,6 +39,26 @@ export function KPIPanel({ data, easterDate }: KPIPanelProps) {
       icon: CalendarRange,
       value: data ? `${data.recommendedWindow.start} → ${data.recommendedWindow.end}` : "—",
     },
+    ...(wc ? [
+      {
+        label: "Hist. Avg Temp",
+        icon: Thermometer,
+        value: `${wc.historicalAvgTemp}°F (${wc.yearsWithData} yr${wc.yearsWithData !== 1 ? "s" : ""})`,
+      },
+      {
+        label: "Hist. Degree Hrs",
+        icon: Clock,
+        value: `${wc.historicalAvgDegreeHours} hrs >40°F`,
+      },
+      ...(wc.currentYear ? [
+        {
+          label: `${data?.targetYear} Avg Temp`,
+          icon: Thermometer,
+          value: `${wc.currentYear.avgTemp}°F (${wc.currentYear.days} days)`,
+          highlight: true,
+        },
+      ] : []),
+    ] : []),
   ];
 
   return (
