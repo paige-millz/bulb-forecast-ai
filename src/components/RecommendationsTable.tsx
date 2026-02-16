@@ -1,10 +1,5 @@
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,16 +10,16 @@ interface RecommendationsTableProps {
 }
 
 const confidenceBadge: Record<string, string> = {
-  High: "bg-green-100 text-green-800 border-green-300",
-  Medium: "bg-yellow-100 text-yellow-800 border-yellow-300",
-  Low: "bg-red-100 text-red-800 border-red-300",
+  High: "bg-success/15 text-success border-success/30",
+  Medium: "bg-accent/15 text-accent border-accent/30",
+  Low: "bg-destructive/15 text-destructive border-destructive/30",
 };
 
 export function RecommendationsTable({ data }: RecommendationsTableProps) {
   return (
-    <Card className="animate-fade-in">
+    <Card className="shadow-sm">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg">Recommendation Summary</CardTitle>
+        <CardTitle className="text-lg font-heading uppercase tracking-wide">Recommendation Summary</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
@@ -43,11 +38,11 @@ export function RecommendationsTable({ data }: RecommendationsTableProps) {
             </TableHeader>
             <TableBody>
               <TableRow>
-                <TableCell className="font-medium">{data.bulbType}</TableCell>
+                <TableCell className="font-semibold">{data.bulbType}</TableCell>
                 <TableCell>{data.easterDate}</TableCell>
                 <TableCell>{data.medianDBE} days</TableCell>
                 <TableCell>{data.iqr}</TableCell>
-                <TableCell className="font-semibold text-primary">{data.recommendedRemovalDate}</TableCell>
+                <TableCell className="font-bold text-primary">{data.recommendedRemovalDate}</TableCell>
                 <TableCell className="text-sm">{data.recommendedWindow.start} → {data.recommendedWindow.end}</TableCell>
                 <TableCell>{data.nRecords}</TableCell>
                 <TableCell>

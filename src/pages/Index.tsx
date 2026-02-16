@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Flower2, Loader2, Download, Trash2, AlertTriangle, CloudSun } from "lucide-react";
+import { Mountain, Loader2, Download, Trash2, AlertTriangle, CloudSun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -110,25 +110,27 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container max-w-6xl py-5">
+      <header className="border-b-2 border-primary/20 bg-card">
+        <div className="container max-w-6xl py-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10">
-                <Flower2 className="h-6 w-6 text-primary" />
+            <div className="text-center flex-1">
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <Mountain className="h-5 w-5 text-primary" />
               </div>
-              <div>
-                <h1 className="text-2xl leading-tight">Easter Bulb Removal Planner</h1>
-                <p className="text-sm text-muted-foreground">Predict optimal cooler removal timing</p>
-              </div>
+              <h1 className="text-2xl font-heading tracking-wide uppercase text-primary">
+                Blue Mountain Farms
+              </h1>
+              <p className="text-xs tracking-widest text-muted-foreground uppercase mt-0.5">Est. 1976</p>
+              <div className="w-16 h-px bg-primary/30 mx-auto mt-3 mb-2" />
+              <p className="text-sm text-muted-foreground">Easter Bulb Removal Planner</p>
             </div>
 
             {bulbCount > 0 && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/5">
+                  <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/5 absolute right-8">
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Clear All Data
+                    Clear Data
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>

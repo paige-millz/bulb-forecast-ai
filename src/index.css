@@ -2,54 +2,62 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
-    --background: 40 30% 97%;
-    --foreground: 150 25% 12%;
+    /* Blue Mountain Farms palette */
+    /* Primary: #2F4EA2 → hsl(224, 55%, 41%) */
+    /* Accent:  #5B76B7 → hsl(221, 38%, 54%) */
+    /* Success: #5F7D4F → hsl(103, 23%, 40%) */
+
+    --background: 0 0% 96.5%;
+    --foreground: 0 0% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 150 25% 12%;
+    --card-foreground: 0 0% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 150 25% 12%;
+    --popover-foreground: 0 0% 12%;
 
-    --primary: 142 40% 38%;
-    --primary-foreground: 40 30% 97%;
+    --primary: 224 55% 41%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 40 35% 92%;
-    --secondary-foreground: 150 25% 12%;
+    --secondary: 221 30% 94%;
+    --secondary-foreground: 0 0% 12%;
 
-    --muted: 40 20% 94%;
-    --muted-foreground: 150 10% 45%;
+    --muted: 220 14% 93%;
+    --muted-foreground: 220 10% 46%;
 
-    --accent: 35 85% 55%;
-    --accent-foreground: 35 90% 15%;
+    --accent: 221 38% 54%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 55% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 40 15% 88%;
-    --input: 40 15% 88%;
-    --ring: 142 40% 38%;
+    --success: 103 23% 40%;
+    --success-foreground: 0 0% 100%;
 
-    --radius: 0.625rem;
+    --border: 220 13% 87%;
+    --input: 220 13% 87%;
+    --ring: 224 55% 41%;
 
-    --chart-1: 142 40% 38%;
-    --chart-2: 35 85% 55%;
-    --chart-3: 200 60% 50%;
-    --chart-4: 280 50% 55%;
-    --chart-5: 0 72% 51%;
+    --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --chart-1: 224 55% 41%;
+    --chart-2: 221 38% 54%;
+    --chart-3: 103 23% 40%;
+    --chart-4: 220 14% 60%;
+    --chart-5: 0 55% 48%;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 12%;
+    --sidebar-primary: 224 55% 41%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 221 30% 94%;
+    --sidebar-accent-foreground: 0 0% 12%;
+    --sidebar-border: 220 13% 87%;
+    --sidebar-ring: 224 55% 41%;
   }
 }
 
@@ -59,11 +67,12 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans;
-    font-family: 'DM Sans', sans-serif;
+    @apply bg-background text-foreground;
+    font-family: 'Source Sans 3', 'Inter', sans-serif;
   }
 
-  h1, h2, h3 {
-    font-family: 'DM Serif Display', serif;
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
   }
 }
