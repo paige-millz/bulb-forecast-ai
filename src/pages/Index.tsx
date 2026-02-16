@@ -241,7 +241,7 @@ const Index = () => {
         </Card>
 
         {/* Collapsible Data Sources */}
-        <Collapsible defaultOpen={bulbCount === 0}>
+        <Collapsible defaultOpen={false}>
           <div className="flex items-center gap-2">
             <CollapsibleTrigger asChild>
               <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground hover:text-foreground">
