@@ -11,6 +11,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
@@ -208,7 +211,22 @@ export function BulbRecordsTable() {
               </div>
               <div>
                 <Label>Yield Quality</Label>
-                <Input value={form.yield_quality} onChange={(e) => setForm({ ...form, yield_quality: e.target.value })} placeholder="excellent, good, fair, poor" />
+                <Select value={form.yield_quality || ""} onValueChange={(v) => setForm({ ...form, yield_quality: v === "none" ? "" : v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select quality" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">—</SelectItem>
+                    <SelectItem value="excellent">Excellent</SelectItem>
+                    <SelectItem value="good">Good</SelectItem>
+                    <SelectItem value="fair">Fair</SelectItem>
+                    <SelectItem value="poor">Poor</SelectItem>
+                    <SelectItem value="fair - too early">Fair – Too Early</SelectItem>
+                    <SelectItem value="fair - too late">Fair – Too Late</SelectItem>
+                    <SelectItem value="poor - too early">Poor – Too Early</SelectItem>
+                    <SelectItem value="poor - too late">Poor – Too Late</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>Yield Notes</Label>
@@ -311,17 +329,43 @@ export function BulbRecordsTable() {
                   />
                   <TableCell>{r.avg_temp_from_removal_f ?? "—"}</TableCell>
                   <TableCell>{r.degree_hours_above_40f != null ? Math.round(r.degree_hours_above_40f) : "—"}</TableCell>
-                  <EditableCell
-                    value={r.yield_quality}
-                    isEditing={editing?.id === r.id && editing.field === "yield_quality"}
-                    editValue={editing?.id === r.id && editing.field === "yield_quality" ? editing.value : ""}
-                    onStartEdit={() => startEdit(r.id, "yield_quality", r.yield_quality)}
-                    onChangeValue={(v) => setEditing((prev) => prev ? { ...prev, value: v } : null)}
-                    onSave={saveEdit}
-                    onCancel={cancelEdit}
-                    onKeyDown={handleKeyDown}
-                    saving={saving}
-                  />
+                  {editing?.id === r.id && editing.field === "yield_quality" ? (
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Select value={editing.value || "none"} onValueChange={(v) => {
+                          setEditing((prev) => prev ? { ...prev, value: v === "none" ? "" : v } : null);
+                        }}>
+                          <SelectTrigger className="h-7 text-sm min-w-[140px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">—</SelectItem>
+                            <SelectItem value="excellent">Excellent</SelectItem>
+                            <SelectItem value="good">Good</SelectItem>
+                            <SelectItem value="fair">Fair</SelectItem>
+                            <SelectItem value="poor">Poor</SelectItem>
+                            <SelectItem value="fair - too early">Fair – Too Early</SelectItem>
+                            <SelectItem value="fair - too late">Fair – Too Late</SelectItem>
+                            <SelectItem value="poor - too early">Poor – Too Early</SelectItem>
+                            <SelectItem value="poor - too late">Poor – Too Late</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={saveEdit} disabled={saving}>
+                          <Check className="h-3.5 w-3.5 text-primary" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={cancelEdit} disabled={saving}>
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  ) : (
+                    <TableCell
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => startEdit(r.id, "yield_quality", r.yield_quality)}
+                    >
+                      {r.yield_quality || "—"}
+                    </TableCell>
+                  )}
                   <EditableCell
                     value={r.yield_notes}
                     isEditing={editing?.id === r.id && editing.field === "yield_notes"}
