@@ -154,35 +154,6 @@ const Index = () => {
                   Weather
                 </Link>
               </Button>
-              {bulbCount > 0 && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/5">
-                      <Trash2 className="h-4 w-4 mr-1 sm:mr-2" />
-                      <span className="hidden sm:inline">Clear Data</span>
-                      <span className="sm:hidden">Clear</span>
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Clear All Historical Data?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently delete all {bulbCount} bulb records. This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleClearData}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        disabled={clearing}
-                      >
-                        {clearing ? "Clearing..." : "Delete All Records"}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
             </div>
           </div>
         </div>
