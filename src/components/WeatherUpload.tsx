@@ -85,9 +85,11 @@ export function WeatherUpload({ onUploadComplete }: WeatherUploadProps) {
       const currentYear = new Date().getFullYear();
       let totalImported = 0;
 
+      const today = new Date().toISOString().split("T")[0];
       for (let year = 2013; year <= currentYear; year++) {
         const startDate = `${year}-02-01`;
-        const endDate = `${year}-04-30`;
+        let endDate = `${year}-04-30`;
+        if (endDate > today) endDate = today;
 
         const { data, error } = await supabase.functions.invoke("sync-weather", {
           body: { latitude: parseFloat(latitude), longitude: parseFloat(longitude), startDate, endDate },
