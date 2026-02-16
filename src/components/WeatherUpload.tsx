@@ -3,10 +3,17 @@ import { Upload, CloudSun, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { upsertWeatherData, type WeatherDaily } from "@/lib/bulb-utils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface WeatherUploadProps {
   onUploadComplete: () => void;
+}
+
+interface WeatherRow {
+  date: string;
+  tavg_f: number;
+  tmin_f?: number | null;
+  tmax_f?: number | null;
 }
 
 export function WeatherUpload({ onUploadComplete }: WeatherUploadProps) {
@@ -29,7 +36,7 @@ export function WeatherUpload({ onUploadComplete }: WeatherUploadProps) {
         return;
       }
 
-      const rows: WeatherDaily[] = [];
+      const rows: WeatherRow[] = [];
       for (let i = 1; i < lines.length; i++) {
         const cols = lines[i].split(",").map((c) => c.trim());
         const tavg = parseFloat(cols[tavgIdx]);
@@ -47,7 +54,12 @@ export function WeatherUpload({ onUploadComplete }: WeatherUploadProps) {
         return;
       }
 
-      await upsertWeatherData(rows);
+      for (let i = 0; i < rows.length; i += 500) {
+        const chunk = rows.slice(i, i + 500);
+        const { error } = await supabase.from("weather_daily").upsert(chunk, { onConflict: "date" });
+        if (error) throw error;
+      }
+
       toast({ title: "Weather data uploaded", description: `${rows.length} days imported.` });
       onUploadComplete();
     } catch (err: any) {

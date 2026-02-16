@@ -35,27 +35,14 @@ function addDays(d: Date, n: number): Date {
   return r;
 }
 
-function diffDays(a: Date, b: Date): number {
-  return Math.round((a.getTime() - b.getTime()) / (86400000));
-}
-
-// ── Simple OLS regression ───────────────────────────────────
-function linearRegression(points: { x: number; y: number }[]): { slope: number; intercept: number } {
-  const n = points.length;
-  if (n === 0) return { slope: 0, intercept: 0 };
-  if (n === 1) return { slope: 0, intercept: points[0].y };
-  let sx = 0, sy = 0, sxx = 0, sxy = 0;
-  for (const p of points) {
-    sx += p.x;
-    sy += p.y;
-    sxx += p.x * p.x;
-    sxy += p.x * p.y;
-  }
-  const denom = n * sxx - sx * sx;
-  if (Math.abs(denom) < 1e-10) return { slope: 0, intercept: sy / n };
-  const slope = (n * sxy - sx * sy) / denom;
-  const intercept = (sy - slope * sx) / n;
-  return { slope, intercept };
+// ── Robust statistics helpers ───────────────────────────────
+function percentile(sorted: number[], p: number): number {
+  if (sorted.length === 0) return 0;
+  const idx = (p / 100) * (sorted.length - 1);
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+  if (lo === hi) return sorted[lo];
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
 }
 
 Deno.serve(async (req) => {
@@ -64,7 +51,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { targetYear, bulbType, modelType } = await req.json();
+    const { targetYear, bulbType } = await req.json();
 
     if (!targetYear || !bulbType) {
       return new Response(
@@ -77,127 +64,94 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // ── 1. Easter date ──────────────────────────────────────
+    // 1. Easter date
     const easter = computeEaster(targetYear);
     const easterDate = fmt(easter);
 
-    // ── 2. Load bulb_records ────────────────────────────────
+    // 2. Load bulb_records filtered by bulbType
+    const notes: string[] = [];
     let query = supabase.from("bulb_records").select("*");
     if (bulbType !== "All") {
       query = query.eq("bulb_type", bulbType);
     }
-    const { data: records, error: recErr } = await query;
+    let { data: records, error: recErr } = await query;
     if (recErr) throw recErr;
+
+    // 3. Fallback if < 4 records
+    if (!records || records.length < 4) {
+      const label = bulbType !== "All" ? bulbType : "selected filter";
+      notes.push(`Insufficient history for "${label}" (${records?.length ?? 0} records). Using full dataset.`);
+      const { data: allRecords, error: allErr } = await supabase.from("bulb_records").select("*");
+      if (allErr) throw allErr;
+      records = allRecords;
+    }
+
     if (!records || records.length === 0) {
       return new Response(
-        JSON.stringify({ error: `No bulb records found for type "${bulbType}".` }),
+        JSON.stringify({ error: "No bulb records found in the database." }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // ── 3. Compute avgDBE ───────────────────────────────────
-    const totalDbe = records.reduce((s: number, r: any) => s + Number(r.dbe), 0);
-    const avgDBE = Math.round((totalDbe / records.length) * 10) / 10;
+    // 4. Ensure DBE values exist
+    const dbeValues: number[] = records.map((r: any) => {
+      if (r.dbe && Number(r.dbe) > 0) return Number(r.dbe);
+      // Compute from dates
+      const ed = new Date(r.easter_date);
+      const rd = new Date(r.removal_date);
+      return Math.round((ed.getTime() - rd.getTime()) / 86400000);
+    });
 
-    // ── 4. Build regression model ───────────────────────────
-    // Load weather data for all historical dates around Easter ±60 days
-    // Build (dbe → tavg) data points by joining records with weather
-    const allPoints: { x: number; y: number }[] = [];
-    const pointsByYear: Record<number, { x: number; y: number }[]> = {};
+    // 5. Compute robust statistics
+    const sorted = [...dbeValues].sort((a, b) => a - b);
+    const nRecords = sorted.length;
+    const medianDBE = percentile(sorted, 50);
+    const p25DBE = percentile(sorted, 25);
+    const p75DBE = percentile(sorted, 75);
+    const iqr = Math.round((p75DBE - p25DBE) * 10) / 10;
 
-    // For each record, get weather around that year's Easter
-    const yearGroups: Record<number, any[]> = {};
-    for (const r of records) {
-      const y = Number(r.year);
-      if (!yearGroups[y]) yearGroups[y] = [];
-      yearGroups[y].push(r);
-    }
+    // 6. Recommended timing
+    const roundedMedian = Math.round(medianDBE);
+    const recommendedDate = addDays(easter, -roundedMedian);
+    const windowStart = addDays(easter, -Math.round(p75DBE)); // earlier pull
+    const windowEnd = addDays(easter, -Math.round(p25DBE));   // later pull
 
-    for (const [yearStr, _recs] of Object.entries(yearGroups)) {
-      const yr = Number(yearStr);
-      const yrEaster = computeEaster(yr);
-      const start = addDays(yrEaster, -60);
-
-      const { data: weather } = await supabase
-        .from("weather_daily")
-        .select("date, tavg_f")
-        .gte("date", fmt(start))
-        .lte("date", fmt(yrEaster))
-        .order("date");
-
-      if (weather && weather.length > 0) {
-        for (const w of weather) {
-          const dbe = diffDays(yrEaster, new Date(w.date));
-          const pt = { x: dbe, y: Number(w.tavg_f) };
-          allPoints.push(pt);
-          if (!pointsByYear[yr]) pointsByYear[yr] = [];
-          pointsByYear[yr].push(pt);
-        }
-      }
-    }
-
-    let slope: number;
-    let intercept: number;
-    let usedModel = modelType || "overall";
-    let fallbackNotice: string | null = null;
-
-    if (usedModel === "by_year" || usedModel === "by-year") {
-      const years = Object.keys(pointsByYear).map(Number);
-      if (years.length < 2) {
-        // Fallback to overall
-        usedModel = "overall";
-        fallbackNotice = "Too few years with weather data (<2). Fell back to overall model.";
-        const reg = linearRegression(allPoints);
-        slope = reg.slope;
-        intercept = reg.intercept;
-      } else {
-        // Fit per year, average slopes/intercepts
-        let totalSlope = 0, totalIntercept = 0;
-        for (const yr of years) {
-          const reg = linearRegression(pointsByYear[yr]);
-          totalSlope += reg.slope;
-          totalIntercept += reg.intercept;
-        }
-        slope = totalSlope / years.length;
-        intercept = totalIntercept / years.length;
-      }
+    // 7. Confidence scoring
+    let confidence: "High" | "Medium" | "Low";
+    if (nRecords >= 10 && iqr <= 4) {
+      confidence = "High";
+    } else if (nRecords >= 6 && iqr <= 7) {
+      confidence = "Medium";
     } else {
-      const reg = linearRegression(allPoints);
-      slope = reg.slope;
-      intercept = reg.intercept;
+      confidence = "Low";
     }
 
-    // ── 5. Generate predicted temp series (60 → 0) ─────────
-    const chartSeries: { daysBeforeEaster: number; predictedTavgF: number }[] = [];
-    for (let dbe = 60; dbe >= 0; dbe--) {
-      chartSeries.push({
-        daysBeforeEaster: dbe,
-        predictedTavgF: Math.round((slope * dbe + intercept) * 10) / 10,
-      });
+    // Data quality warnings
+    if (nRecords < 6) {
+      notes.push("Limited historical data. Results may be less reliable.");
+    }
+    if (iqr > 8) {
+      notes.push("High variability in historical timing. Consider reviewing data quality.");
     }
 
-    // ── 6. Recommended removal date ─────────────────────────
-    const roundedDbe = Math.round(avgDBE);
-    const recommendedDate = addDays(easter, -roundedDbe);
-
-    // ── 7. Build response ───────────────────────────────────
-    const response: any = {
+    // 8. Build response
+    const response = {
       targetYear,
       easterDate,
       bulbType,
-      modelType: usedModel,
-      avgDBE,
+      nRecords,
+      medianDBE: Math.round(medianDBE * 10) / 10,
+      p25DBE: Math.round(p25DBE * 10) / 10,
+      p75DBE: Math.round(p75DBE * 10) / 10,
+      iqr,
+      confidence,
       recommendedRemovalDate: fmt(recommendedDate),
       recommendedWindow: {
-        start: fmt(addDays(recommendedDate, -2)),
-        end: fmt(addDays(recommendedDate, 2)),
+        start: fmt(windowStart),
+        end: fmt(windowEnd),
       },
-      recordsUsed: records.length,
-      chartSeries,
-      smallDatasetWarning: records.length < 10
-        ? `Only ${records.length} records used. Results may be unreliable.`
-        : null,
-      fallbackNotice,
+      dbeValues: sorted,
+      notes,
     };
 
     return new Response(JSON.stringify(response), {
