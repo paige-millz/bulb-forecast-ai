@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { Loader2, Download, Trash2, AlertTriangle, CloudSun, ChevronDown } from "lucide-react";
+import { Loader2, Download, Trash2, AlertTriangle, CloudSun, CalendarDays, ChevronDown } from "lucide-react";
 import bmfLogo from "@/assets/bmf-logo.svg";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -152,6 +152,12 @@ const Index = () => {
                 <Link to="/weather" className="gap-1">
                   <CloudSun className="h-4 w-4" />
                   Weather
+                </Link>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/calendar" className="gap-1">
+                  <CalendarDays className="h-4 w-4" />
+                  Calendar
                 </Link>
               </Button>
             </div>
