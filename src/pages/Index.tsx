@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Flower2, Loader2, Download, Trash2, AlertTriangle, Info } from "lucide-react";
+import { Flower2, Loader2, Download, Trash2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,23 +25,19 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "@/hooks/use-toast";
 import { ExcelUpload } from "@/components/ExcelUpload";
-import { WeatherUpload } from "@/components/WeatherUpload";
 import { KPIPanel } from "@/components/KPIPanel";
 import { RecommendationsTable } from "@/components/RecommendationsTable";
-import { TempChart } from "@/components/TempChart";
+import { DBEDistributionChart } from "@/components/DBEDistributionChart";
 import {
   computeEasterDate,
   formatDate,
   fetchBulbTypes,
   fetchBulbRecordCount,
-  fetchWeatherCount,
   callBulbRecommendations,
-  edgeResponseToRecommendations,
   clearAllBulbRecords,
   exportCSV,
   exportJSON,
   downloadFile,
-  type Recommendation,
   type EdgeFunctionResponse,
 } from "@/lib/bulb-utils";
 
@@ -55,27 +51,21 @@ const Index = () => {
   const [targetYear, setTargetYear] = useState(getNextEasterYear());
   const [bulbTypes, setBulbTypes] = useState<string[]>([]);
   const [selectedBulb, setSelectedBulb] = useState("All");
-  const [modelType, setModelType] = useState<"overall" | "by-year">("overall");
-  const [weatherCount, setWeatherCount] = useState<number | null>(null);
   const [bulbCount, setBulbCount] = useState(0);
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
-  const [chartData, setChartData] = useState<{ dbe: number; tavg_f: number }[]>([]);
   const [generating, setGenerating] = useState(false);
   const [clearing, setClearing] = useState(false);
-  const [edgeResponse, setEdgeResponse] = useState<EdgeFunctionResponse | null>(null);
+  const [result, setResult] = useState<EdgeFunctionResponse | null>(null);
 
   const easter = computeEasterDate(targetYear);
   const easterStr = formatDate(easter);
 
   const refreshData = useCallback(async () => {
-    const [types, wCount, bCount] = await Promise.all([
+    const [types, count] = await Promise.all([
       fetchBulbTypes(),
-      fetchWeatherCount(),
       fetchBulbRecordCount(),
     ]);
     setBulbTypes(types);
-    setWeatherCount(wCount);
-    setBulbCount(bCount);
+    setBulbCount(count);
   }, []);
 
   useEffect(() => {
@@ -84,23 +74,15 @@ const Index = () => {
 
   const handleGenerate = async () => {
     setGenerating(true);
-    setEdgeResponse(null);
+    setResult(null);
     try {
-      const resp = await callBulbRecommendations(targetYear, selectedBulb, modelType);
+      const resp = await callBulbRecommendations(targetYear, selectedBulb);
       if (resp.error) {
         toast({ title: "Error", description: resp.error, variant: "destructive" });
         setGenerating(false);
         return;
       }
-      setEdgeResponse(resp);
-      const recs = edgeResponseToRecommendations(resp);
-      setRecommendations(recs);
-      // Map chartSeries to our chart format
-      const chart = resp.chartSeries.map((c) => ({
-        dbe: c.daysBeforeEaster,
-        tavg_f: c.predictedTavgF,
-      }));
-      setChartData(chart);
+      setResult(resp);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -113,9 +95,7 @@ const Index = () => {
     try {
       await clearAllBulbRecords();
       toast({ title: "Data cleared", description: "All historical records removed." });
-      setRecommendations([]);
-      setChartData([]);
-      setEdgeResponse(null);
+      setResult(null);
       await refreshData();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -173,28 +153,16 @@ const Index = () => {
       </header>
 
       <main className="container max-w-6xl py-6 space-y-6">
-        {/* Weather upload — only when empty */}
-        {weatherCount === 0 && (
-          <WeatherUpload onUploadComplete={refreshData} />
-        )}
-
-        {/* Warnings/Notices */}
-        {edgeResponse?.smallDatasetWarning && (
-          <Alert className="border-accent/50 bg-accent/10">
-            <AlertTriangle className="h-4 w-4 text-accent" />
-            <AlertDescription className="text-accent-foreground">
-              {edgeResponse.smallDatasetWarning}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {edgeResponse?.fallbackNotice && (
-          <Alert className="border-primary/30 bg-primary/5">
-            <Info className="h-4 w-4 text-primary" />
-            <AlertDescription>
-              {edgeResponse.fallbackNotice}
-            </AlertDescription>
-          </Alert>
+        {/* Notes / Warnings */}
+        {result?.notes && result.notes.length > 0 && (
+          <div className="space-y-2">
+            {result.notes.map((note, i) => (
+              <Alert key={i} className="border-accent/50 bg-accent/10">
+                <AlertTriangle className="h-4 w-4 text-accent" />
+                <AlertDescription className="text-accent-foreground">{note}</AlertDescription>
+              </Alert>
+            ))}
+          </div>
         )}
 
         {/* Input Row */}
@@ -236,19 +204,6 @@ const Index = () => {
                 </div>
               </div>
 
-              <div>
-                <Label>Model Type</Label>
-                <Select value={modelType} onValueChange={(v) => setModelType(v as any)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="overall">Overall Model</SelectItem>
-                    <SelectItem value="by-year">By-Year Model</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
               <Button onClick={handleGenerate} disabled={generating || bulbTypes.length === 0} className="w-full">
                 {generating ? (
                   <>
@@ -256,7 +211,7 @@ const Index = () => {
                     Generating...
                   </>
                 ) : (
-                  "Generate Recommendations"
+                  "Generate Recommendation"
                 )}
               </Button>
 
@@ -268,34 +223,27 @@ const Index = () => {
         </div>
 
         {/* KPI Panel */}
-        <KPIPanel
-          recommendation={recommendations.length > 0 ? recommendations[0] : null}
-          easterDate={easterStr}
-        />
+        <KPIPanel data={result} easterDate={easterStr} />
 
         {/* Results */}
-        {recommendations.length > 0 && (
+        {result && !result.error && (
           <>
-            <RecommendationsTable data={recommendations} />
+            <RecommendationsTable data={result} />
 
-            <TempChart data={chartData} />
+            <DBEDistributionChart dbeValues={result.dbeValues} medianDBE={result.medianDBE} />
 
             {/* Export */}
             <div className="flex gap-3">
               <Button
                 variant="outline"
-                onClick={() => {
-                  downloadFile(exportCSV(recommendations), "bulb-recommendations.csv", "text/csv");
-                }}
+                onClick={() => downloadFile(exportCSV(result), "bulb-recommendation.csv", "text/csv")}
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
               </Button>
               <Button
                 variant="outline"
-                onClick={() => {
-                  downloadFile(exportJSON(recommendations), "bulb-recommendations.json", "application/json");
-                }}
+                onClick={() => downloadFile(exportJSON(result), "bulb-recommendation.json", "application/json")}
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export JSON

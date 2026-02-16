@@ -7,19 +7,24 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Recommendation } from "@/lib/bulb-utils";
+import { Badge } from "@/components/ui/badge";
+import type { EdgeFunctionResponse } from "@/lib/bulb-utils";
 
 interface RecommendationsTableProps {
-  data: Recommendation[];
+  data: EdgeFunctionResponse;
 }
 
-export function RecommendationsTable({ data }: RecommendationsTableProps) {
-  if (data.length === 0) return null;
+const confidenceBadge: Record<string, string> = {
+  High: "bg-green-100 text-green-800 border-green-300",
+  Medium: "bg-yellow-100 text-yellow-800 border-yellow-300",
+  Low: "bg-red-100 text-red-800 border-red-300",
+};
 
+export function RecommendationsTable({ data }: RecommendationsTableProps) {
   return (
     <Card className="animate-fade-in">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg">Recommendations</CardTitle>
+        <CardTitle className="text-lg">Recommendation Summary</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
@@ -28,25 +33,29 @@ export function RecommendationsTable({ data }: RecommendationsTableProps) {
               <TableRow>
                 <TableHead>Bulb Type</TableHead>
                 <TableHead>Easter</TableHead>
-                <TableHead>Avg DBE</TableHead>
+                <TableHead>Median DBE</TableHead>
+                <TableHead>IQR</TableHead>
                 <TableHead>Removal Date</TableHead>
                 <TableHead>Window</TableHead>
                 <TableHead>Records</TableHead>
-                <TableHead>Model</TableHead>
+                <TableHead>Confidence</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.map((r, i) => (
-                <TableRow key={i}>
-                  <TableCell className="font-medium">{r.bulb_type}</TableCell>
-                  <TableCell>{r.easter_date}</TableCell>
-                  <TableCell>{r.avg_dbe}</TableCell>
-                  <TableCell className="font-semibold text-primary">{r.recommended_removal}</TableCell>
-                  <TableCell className="text-sm">{r.window_start} → {r.window_end}</TableCell>
-                  <TableCell>{r.records_used}</TableCell>
-                  <TableCell>{r.model_type}</TableCell>
-                </TableRow>
-              ))}
+              <TableRow>
+                <TableCell className="font-medium">{data.bulbType}</TableCell>
+                <TableCell>{data.easterDate}</TableCell>
+                <TableCell>{data.medianDBE} days</TableCell>
+                <TableCell>{data.iqr}</TableCell>
+                <TableCell className="font-semibold text-primary">{data.recommendedRemovalDate}</TableCell>
+                <TableCell className="text-sm">{data.recommendedWindow.start} → {data.recommendedWindow.end}</TableCell>
+                <TableCell>{data.nRecords}</TableCell>
+                <TableCell>
+                  <Badge variant="outline" className={confidenceBadge[data.confidence] ?? ""}>
+                    {data.confidence}
+                  </Badge>
+                </TableCell>
+              </TableRow>
             </TableBody>
           </Table>
         </div>
