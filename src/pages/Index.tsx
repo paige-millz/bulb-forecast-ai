@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Loader2, Download, Trash2, AlertTriangle, CloudSun } from "lucide-react";
+import { Loader2, Download, Trash2, AlertTriangle, CloudSun, ChevronDown } from "lucide-react";
 import bmfLogo from "@/assets/bmf-logo.png";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +27,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "@/hooks/use-toast";
 import { ExcelUpload } from "@/components/ExcelUpload";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { WeatherUpload } from "@/components/WeatherUpload";
 import { KPIPanel } from "@/components/KPIPanel";
 import { RecommendationsTable } from "@/components/RecommendationsTable";
@@ -178,64 +179,79 @@ const Index = () => {
         )}
 
         {/* Input Row */}
-        <div className="grid md:grid-cols-[1fr_1fr] gap-6">
-          <div className="space-y-4">
-            <ExcelUpload onUploadComplete={refreshData} />
-            <WeatherUpload onUploadComplete={refreshData} />
-          </div>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Configuration</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="target-year">Target Easter Year</Label>
-                  <Input
-                    id="target-year"
-                    type="number"
-                    value={targetYear}
-                    onChange={(e) => setTargetYear(Number(e.target.value))}
-                    min={2000}
-                    max={2100}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">Easter: {easterStr}</p>
-                </div>
-
-                <div>
-                  <Label>Bulb Type</Label>
-                  <Select value={selectedBulb} onValueChange={setSelectedBulb}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Types</SelectItem>
-                      {bulbTypes.map((bt) => (
-                        <SelectItem key={bt} value={bt}>{bt}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+        {/* Configuration — always visible */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Configuration</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="target-year">Target Easter Year</Label>
+                <Input
+                  id="target-year"
+                  type="number"
+                  value={targetYear}
+                  onChange={(e) => setTargetYear(Number(e.target.value))}
+                  min={2000}
+                  max={2100}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Easter: {easterStr}</p>
               </div>
 
-              <Button onClick={handleGenerate} disabled={generating || bulbTypes.length === 0} className="w-full">
-                {generating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  "Generate Recommendation"
-                )}
-              </Button>
+              <div>
+                <Label>Bulb Type</Label>
+                <Select value={selectedBulb} onValueChange={setSelectedBulb}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All Types</SelectItem>
+                    {bulbTypes.map((bt) => (
+                      <SelectItem key={bt} value={bt}>{bt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-              {bulbTypes.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center">Upload data first</p>
+            <Button onClick={handleGenerate} disabled={generating || bulbTypes.length === 0} className="w-full">
+              {generating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                "Generate Recommendation"
               )}
-            </CardContent>
-          </Card>
-        </div>
+            </Button>
+
+            {bulbTypes.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center">Upload data first</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Collapsible Data Sources */}
+        <Collapsible defaultOpen={bulbCount === 0}>
+          <div className="flex items-center gap-2">
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground hover:text-foreground">
+                <ChevronDown className="h-4 w-4 transition-transform [[data-state=closed]_&]:rotate-[-90deg]" />
+                Data Sources
+              </Button>
+            </CollapsibleTrigger>
+            {bulbCount > 0 && (
+              <span className="text-xs text-muted-foreground">{bulbCount} records loaded</span>
+            )}
+          </div>
+          <CollapsibleContent className="pt-3">
+            <div className="grid md:grid-cols-2 gap-6">
+              <ExcelUpload onUploadComplete={refreshData} />
+              <WeatherUpload onUploadComplete={refreshData} />
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
 
         {/* KPI Panel — only for single bulb type */}
         {results.length === 1 && (
