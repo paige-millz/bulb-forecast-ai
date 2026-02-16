@@ -1,50 +1,55 @@
 
-# Calendar View for Suggested Removal Dates
+
+# Finishing Date Adjustment by Bulb Type
 
 ## Overview
-Add a new page that displays a monthly calendar with recommended removal dates color-coded by bulb type. The page will run the recommendation engine for all bulb types and plot results onto a visual calendar.
+Add a "finishing date" concept where bulbs must be ready a certain number of days before Easter. Since historical DBE values are measured relative to Easter day, the system shifts recommended removal dates earlier by the finishing offset.
 
-## New Route: `/calendar`
+## Logic
 
-### How It Works
-1. On page load, fetch all bulb types from the database
-2. Run `callBulbRecommendations` for each type (same as "All Types" on the main page)
-3. Render a calendar (using the existing `react-day-picker` / `Calendar` component) showing:
-   - Each bulb type's recommended removal date as a colored marker/dot
-   - The recommended window (start-end) as a highlighted date range
-4. A legend below the calendar maps colors to bulb types
-5. Clicking a date marker shows a popover with details (bulb type, median DBE, confidence, window)
+| Bulb Type | Finishing Offset | Effect on Removal Date |
+|-----------|-----------------|----------------------|
+| Contains "1/3" | 10 days before Easter | Shift removal 10 days earlier (DBE + 10) |
+| Contains "oval" | 10 days before Easter | Shift removal 10 days earlier (DBE + 10) |
+| All others (2/3s, etc.) | 4 days before Easter | Shift removal 4 days earlier (DBE + 4) |
 
-### Navigation
-- Add a "Calendar" button in the header nav alongside the existing "Weather" button
-- Add the route to `App.tsx`
+**Formula**: `adjustedRemovalDate = Easter - (DBE + finishingOffset)`
+**Finishing Date**: `Easter - finishingOffset`
 
-## Technical Details
+## Changes
 
-### New Files
-- **`src/pages/CalendarView.tsx`** -- Main page component
-  - Reuses `fetchBulbTypes` and `callBulbRecommendations` from `src/lib/bulb-utils.ts`
-  - Uses the existing `Calendar` component (`react-day-picker`) with custom `modifiers` and `modifiersStyles` to highlight removal dates per bulb type
-  - Each bulb type gets a distinct color from a predefined palette
-  - Uses `Popover` to show details when a highlighted date is clicked
-  - Includes a color-coded legend and a target year selector
+### 1. `src/lib/bulb-utils.ts`
+- Add `getDefaultFinishingDaysBefore(bulbType: string): number` helper (returns 10 for 1/3/oval, 4 for others)
+- Add `finishingDate` and `finishingDaysBefore` to `EdgeFunctionResponse` interface
+- Update `callBulbRecommendations` to pass `finishingDaysBefore` to the edge function
 
-### Modified Files
-- **`src/App.tsx`** -- Add `/calendar` route
-- **`src/pages/Index.tsx`** -- Add a "Calendar" nav button in the header alongside the "Weather" button
+### 2. `supabase/functions/bulb-recommendations/index.ts`
+- Accept optional `finishingDaysBefore` parameter (auto-detect from bulb type if not provided)
+- Add `getDefaultFinishing(bulbType)` function mirroring frontend logic
+- Compute `finishingDate = Easter - finishingDaysBefore`
+- Shift all dates earlier by `finishingDaysBefore`:
+  - `recommendedRemovalDate = Easter - (roundedMedian + finishingDaysBefore)`
+  - Window start/end shifted similarly
+  - Weather-adjusted dates shifted similarly
+- Include `finishingDate` and `finishingDaysBefore` in response
 
-### Calendar Rendering Approach
-- Use `react-day-picker`'s `modifiers` prop to mark specific dates per bulb type
-- Use `modifiersStyles` or custom `components.Day` renderer to show colored dots/badges on removal dates
-- Show the recommended window as a subtle background highlight
-- Default view month set to the recommended removal month
+### 3. `src/components/RecommendationsTable.tsx`
+- Add "Finish By" column between "Easter" and "Median DBE"
+- Display the finishing date for each bulb type
 
-### Data Flow
-```text
-Page loads
-  -> fetchBulbTypes()
-  -> for each type: callBulbRecommendations(targetYear, type)
-  -> parse recommendedRemovalDate + recommendedWindow from each response
-  -> map to calendar modifiers with per-type colors
-  -> render Calendar + Legend + detail Popovers
-```
+### 4. `src/components/KPIPanel.tsx`
+- Add "Finish By Date" KPI card (displayed when single bulb type selected)
+
+### 5. `src/pages/CalendarView.tsx`
+- Mark finishing dates on calendar with a distinct indicator (e.g., diamond or outlined dot) alongside the removal date markers
+
+### 6. `src/pages/Index.tsx`
+- No changes needed beyond what flows through the updated response type
+
+## Files Modified
+- `src/lib/bulb-utils.ts` -- helper + type updates
+- `supabase/functions/bulb-recommendations/index.ts` -- core logic shift
+- `src/components/RecommendationsTable.tsx` -- new column
+- `src/components/KPIPanel.tsx` -- new card
+- `src/pages/CalendarView.tsx` -- finishing date markers
+
