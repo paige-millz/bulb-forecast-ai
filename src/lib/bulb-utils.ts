@@ -64,7 +64,6 @@ export async function fetchBulbTypes(): Promise<string[]> {
   const { data } = await supabase
     .from("bulb_records")
     .select("bulb_type")
-    .not("removal_date", "is", null)
     .order("bulb_type");
   if (!data) return [];
   return [...new Set(data.map((r) => r.bulb_type))];
