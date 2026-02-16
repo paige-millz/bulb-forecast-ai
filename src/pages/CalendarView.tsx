@@ -231,16 +231,16 @@ const CalendarView = () => {
                   ))}
                   {days.map((dayNum, idx) => {
                     if (dayNum === null) {
-                      return <div key={`e-${idx}`} className="h-16" />;
+                      return <div key={`e-${idx}`} className="min-h-[4.5rem] sm:min-h-[5.5rem]" />;
                     }
                     const bulbs = getBulbsForDay(dayNum);
                     const windows = getWindowsForDay(dayNum);
                     const isEaster = isSameDay(new Date(viewYear, month, dayNum), easter);
-                    const hasContent = bulbs.length > 0;
+                    const hasContent = bulbs.length > 0 || windows.length > 0;
 
-                    // subtle window bg
-                    const windowColor = windows.length > 0
-                      ? `${windows[0].color.replace(")", ", 0.08)")}`
+                    // blend window colors
+                    const windowBg = windows.length > 0
+                      ? `${windows[0].color.replace(")", ", 0.1)")}`
                       : undefined;
 
                     return (
@@ -250,33 +250,38 @@ const CalendarView = () => {
                       }}>
                         <PopoverTrigger asChild>
                           <button
-                            className={`h-16 sm:h-20 border border-border/50 rounded-md p-1 text-left transition-colors hover:bg-muted/50 relative ${
+                            className={`min-h-[4.5rem] sm:min-h-[5.5rem] border border-border/50 rounded-md p-1 text-left transition-colors hover:bg-muted/50 relative overflow-hidden ${
                               isEaster ? "ring-2 ring-primary/40" : ""
                             }`}
-                            style={windowColor ? { backgroundColor: windowColor } : undefined}
+                            style={windowBg ? { backgroundColor: windowBg } : undefined}
                             onClick={() => setSelectedDay(new Date(viewYear, month, dayNum))}
                           >
                             <span className={`text-xs ${isEaster ? "font-bold text-primary" : "text-foreground"}`}>
                               {dayNum}
                             </span>
                             {isEaster && <span className="text-[9px] text-primary block leading-tight">Easter</span>}
-                            <div className="flex flex-wrap gap-0.5 mt-0.5">
-                              {bulbs.map((b, i) => (
-                                <span
-                                  key={i}
-                                  className="w-2.5 h-2.5 rounded-full inline-block"
-                                  style={{ backgroundColor: b.color }}
-                                  title={b.response.bulbType}
-                                />
-                              ))}
-                            </div>
+                            {/* Show bulb type labels on removal dates */}
+                            {bulbs.map((b, i) => (
+                              <div key={`dot-${i}`} className="flex items-center gap-1 mt-0.5">
+                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: b.color }} />
+                                <span className="text-[9px] sm:text-[10px] font-semibold leading-tight truncate" style={{ color: b.color }}>
+                                  {b.response.bulbType}
+                                </span>
+                              </div>
+                            ))}
+                            {/* Show window bars for days in window but not the removal date */}
+                            {bulbs.length === 0 && windows.map((w, i) => (
+                              <div key={`win-${i}`} className="mt-0.5">
+                                <div className="h-1 rounded-full w-full" style={{ backgroundColor: `${w.color.replace(")", ", 0.35)")}` }} />
+                              </div>
+                            ))}
                           </button>
                         </PopoverTrigger>
                         {hasContent && (
-                          <PopoverContent className="w-72">
+                          <PopoverContent className="w-72 pointer-events-auto">
                             <div className="space-y-3">
                               {bulbs.map((b, i) => (
-                                <div key={i} className="space-y-1">
+                                <div key={`p-${i}`} className="space-y-1">
                                   <div className="flex items-center gap-2">
                                     <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: b.color }} />
                                     <span className="font-semibold text-sm">{b.response.bulbType}</span>
@@ -285,9 +290,23 @@ const CalendarView = () => {
                                     </Badge>
                                   </div>
                                   <div className="text-xs text-muted-foreground space-y-0.5 pl-5">
+                                    <p>Removal: <strong>{b.response.recommendedRemovalDate}</strong></p>
                                     <p>Median DBE: <strong>{b.response.medianDBE}</strong></p>
                                     <p>Window: {b.response.recommendedWindow.start} → {b.response.recommendedWindow.end}</p>
                                     <p>Records: {b.response.nRecords}</p>
+                                  </div>
+                                </div>
+                              ))}
+                              {bulbs.length === 0 && windows.map((w, i) => (
+                                <div key={`w-${i}`} className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: w.color }} />
+                                    <span className="font-medium text-sm">{w.response.bulbType}</span>
+                                    <span className="text-xs text-muted-foreground">(window)</span>
+                                  </div>
+                                  <div className="text-xs text-muted-foreground pl-5">
+                                    <p>Removal: {w.response.recommendedRemovalDate}</p>
+                                    <p>Window: {w.response.recommendedWindow.start} → {w.response.recommendedWindow.end}</p>
                                   </div>
                                 </div>
                               ))}
