@@ -190,16 +190,22 @@ const Index = () => {
 
       <main className="container max-w-6xl px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {/* Notes / Warnings */}
-        {results.length > 0 && results.some(r => r.notes?.length > 0) && (
-          <div className="space-y-2">
-            {[...new Set(results.flatMap(r => r.notes || []))].map((note, i) => (
-              <Alert key={i} className="border-accent/50 bg-accent/10">
-                <AlertTriangle className="h-4 w-4 text-accent" />
-                <AlertDescription className="text-accent-foreground">{note}</AlertDescription>
-              </Alert>
-            ))}
-          </div>
-        )}
+        {results.length > 0 && results.some(r => r.notes?.length > 0) && (() => {
+          const allNotes = [...new Set(results.flatMap(r => r.notes || []))];
+          const displayNotes = results.length > 1
+            ? allNotes.filter(n => !n.match(/paired weather|No weather data|Weather correlation|Weather data exists|Could not load weather/i))
+            : allNotes;
+          return displayNotes.length > 0 ? (
+            <div className="space-y-2">
+              {displayNotes.map((note, i) => (
+                <Alert key={i} className="border-accent/50 bg-accent/10">
+                  <AlertTriangle className="h-4 w-4 text-accent" />
+                  <AlertDescription className="text-accent-foreground">{note}</AlertDescription>
+                </Alert>
+              ))}
+            </div>
+          ) : null;
+        })()}
 
         {/* Input Row */}
         {/* Configuration — always visible */}
