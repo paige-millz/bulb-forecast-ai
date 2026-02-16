@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.sync-weather]
 verify_jwt = false
+
+[functions.grower-chat]
+verify_jwt = false
