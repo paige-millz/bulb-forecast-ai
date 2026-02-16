@@ -112,10 +112,10 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b-2 border-primary/20 bg-card">
-        <div className="container max-w-6xl py-6">
+        <div className="container max-w-6xl py-3">
           <div className="flex items-center justify-between">
             <div className="text-center flex-1">
-              <img src={bmfLogo} alt="Blue Mountain Farms" className="h-44 mx-auto mb-3" />
+              <img src={bmfLogo} alt="Blue Mountain Farms" className="h-52 mx-auto" />
               <div className="w-16 h-px bg-primary/30 mx-auto mt-2 mb-2" />
               <p className="text-sm text-muted-foreground">Easter Bulb Removal Planner</p>
             </div>
