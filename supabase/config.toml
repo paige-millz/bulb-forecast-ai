@@ -1,1 +1,7 @@
 project_id = "qsmifvwbirhfjznrlonc"
+
+[functions.bulb-recommendations]
+verify_jwt = false
+
+[functions.sync-weather]
+verify_jwt = false

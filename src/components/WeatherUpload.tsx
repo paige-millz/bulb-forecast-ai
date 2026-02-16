@@ -14,6 +14,7 @@ interface WeatherRow {
   tavg_f: number;
   tmin_f?: number | null;
   tmax_f?: number | null;
+  source?: string | null;
 }
 
 export function WeatherUpload({ onUploadComplete }: WeatherUploadProps) {
@@ -30,6 +31,7 @@ export function WeatherUpload({ onUploadComplete }: WeatherUploadProps) {
       const tavgIdx = headers.findIndex((h) => h.includes("tavg") || h.includes("avg"));
       const tminIdx = headers.findIndex((h) => h.includes("tmin") || h.includes("min"));
       const tmaxIdx = headers.findIndex((h) => h.includes("tmax") || h.includes("max"));
+      const sourceIdx = headers.findIndex((h) => h === "source");
 
       if (dateIdx === -1 || tavgIdx === -1) {
         toast({ title: "Invalid CSV", description: "Needs 'date' and 'tavg' columns.", variant: "destructive" });
@@ -46,6 +48,7 @@ export function WeatherUpload({ onUploadComplete }: WeatherUploadProps) {
           tavg_f: tavg,
           tmin_f: tminIdx >= 0 ? parseFloat(cols[tminIdx]) || null : null,
           tmax_f: tmaxIdx >= 0 ? parseFloat(cols[tmaxIdx]) || null : null,
+          source: sourceIdx >= 0 ? cols[sourceIdx] || null : null,
         });
       }
 
@@ -79,7 +82,7 @@ export function WeatherUpload({ onUploadComplete }: WeatherUploadProps) {
       </CardHeader>
       <CardContent>
         <p className="text-sm text-muted-foreground mb-3">
-          No weather data found. Upload a CSV with columns: date, tavg (°F), tmin, tmax.
+          Upload a CSV with columns: date, tavg_f, tmin_f, tmax_f, source.
         </p>
         <label className="cursor-pointer">
           <input

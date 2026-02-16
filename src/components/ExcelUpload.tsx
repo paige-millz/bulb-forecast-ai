@@ -33,12 +33,16 @@ export function ExcelUpload({ onUploadComplete }: ExcelUploadProps) {
         const easter_raw = row["Easter Date"] ?? row["easter_date"] ?? row["EasterDate"];
         const removal_raw = row["Removal Date"] ?? row["removal_date"] ?? row["RemovalDate"];
         const easter_date = parseExcelDate(easter_raw);
-        const removal_date = parseExcelDate(removal_raw);
+        const removal_date = parseExcelDate(removal_raw) || null;
 
-        let dbe = Number(row["DBE"] ?? row["dbe"] ?? 0);
+        let dbe = Number(row["DBE"] ?? row["dbe"] ?? 0) || null;
         if (!dbe && easter_date && removal_date) {
           dbe = diffDays(new Date(easter_date), new Date(removal_date));
         }
+
+        const ship_raw = row["Ship Date"] ?? row["ship_date"];
+        const avg_temp = parseFloat(row["avg_temp_from_removal_f"] ?? row["Avg Temp From Removal F"] ?? "");
+        const degree_hours = parseFloat(row["degree_hours_above_40f"] ?? row["Degree Hours Above 40F"] ?? "");
 
         return {
           year,
@@ -46,13 +50,19 @@ export function ExcelUpload({ onUploadComplete }: ExcelUploadProps) {
           easter_date,
           removal_date,
           dbe,
+          ship_date: ship_raw ? parseExcelDate(ship_raw) : null,
+          avg_temp_from_removal_f: isNaN(avg_temp) ? null : avg_temp,
+          degree_hours_above_40f: isNaN(degree_hours) ? null : degree_hours,
+          yield_notes: row["yield_notes"] ?? row["Yield Notes"] ?? null,
+          yield_quality: row["yield_quality"] ?? row["Yield Quality"] ?? null,
+          grower_notes: row["grower_notes"] ?? row["Grower Notes"] ?? null,
           notes: row["Notes"] ?? row["notes"] ?? null,
         };
       });
 
-      // Validate
+      // Validate: need at least year, bulb_type, and easter_date
       const valid = records.filter(
-        (r) => r.year > 0 && r.bulb_type && r.easter_date && r.removal_date && r.dbe > 0
+        (r) => r.year > 0 && r.bulb_type && r.easter_date
       );
 
       if (valid.length === 0) {
@@ -61,7 +71,13 @@ export function ExcelUpload({ onUploadComplete }: ExcelUploadProps) {
       }
 
       await clearAndInsertBulbRecords(valid);
-      toast({ title: "Upload complete", description: `${valid.length} records imported.` });
+
+      const years = [...new Set(valid.map((r) => r.year))].sort();
+      const types = [...new Set(valid.map((r) => r.bulb_type))];
+      toast({
+        title: "Upload complete",
+        description: `${valid.length} records imported. Years: ${years[0]}–${years[years.length - 1]}. ${types.length} bulb types.`,
+      });
       onUploadComplete();
     } catch (err: any) {
       toast({ title: "Upload error", description: err.message, variant: "destructive" });
@@ -100,7 +116,7 @@ export function ExcelUpload({ onUploadComplete }: ExcelUploadProps) {
             <Upload className="h-8 w-8 text-muted-foreground" />
           )}
           <span className="text-sm text-muted-foreground">
-            {loading ? "Processing..." : "Drop Excel file here or click to browse"}
+            {loading ? "Processing..." : "Drop Excel/CSV file here or click to browse"}
           </span>
           <input
             type="file"
@@ -125,7 +141,6 @@ export function ExcelUpload({ onUploadComplete }: ExcelUploadProps) {
 function parseExcelDate(val: any): string {
   if (!val) return "";
   if (typeof val === "number") {
-    // Excel serial date
     const d = XLSX.SSF.parse_date_code(val);
     return `${d.y}-${String(d.m).padStart(2, "0")}-${String(d.d).padStart(2, "0")}`;
   }
