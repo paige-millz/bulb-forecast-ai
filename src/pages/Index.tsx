@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { Mountain, Loader2, Download, Trash2, AlertTriangle, CloudSun } from "lucide-react";
+import { Loader2, Download, Trash2, AlertTriangle, CloudSun } from "lucide-react";
+import bmfLogo from "@/assets/bmf-logo.png";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -114,14 +115,8 @@ const Index = () => {
         <div className="container max-w-6xl py-6">
           <div className="flex items-center justify-between">
             <div className="text-center flex-1">
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <Mountain className="h-5 w-5 text-primary" />
-              </div>
-              <h1 className="text-2xl font-heading tracking-wide uppercase text-primary">
-                Blue Mountain Farms
-              </h1>
-              <p className="text-xs tracking-widest text-muted-foreground uppercase mt-0.5">Est. 1976</p>
-              <div className="w-16 h-px bg-primary/30 mx-auto mt-3 mb-2" />
+              <img src={bmfLogo} alt="Blue Mountain Farms" className="h-24 mx-auto mb-2" />
+              <div className="w-16 h-px bg-primary/30 mx-auto mt-2 mb-2" />
               <p className="text-sm text-muted-foreground">Easter Bulb Removal Planner</p>
             </div>
 
