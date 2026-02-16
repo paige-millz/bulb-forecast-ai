@@ -30,6 +30,7 @@ import { WeatherUpload } from "@/components/WeatherUpload";
 import { KPIPanel } from "@/components/KPIPanel";
 import { RecommendationsTable } from "@/components/RecommendationsTable";
 import { DBEDistributionChart } from "@/components/DBEDistributionChart";
+import { BulbRecordsTable } from "@/components/BulbRecordsTable";
 import {
   computeEasterDate,
   formatDate,
@@ -256,6 +257,9 @@ const Index = () => {
             </div>
           </>
         )}
+
+        {/* Bulb Records Table with inline editing */}
+        <BulbRecordsTable />
       </main>
     </div>
   );
