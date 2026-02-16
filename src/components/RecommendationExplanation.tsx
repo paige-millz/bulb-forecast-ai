@@ -13,6 +13,19 @@ function explain(r: EdgeFunctionResponse): string {
     `Based on ${r.nRecords} year${r.nRecords !== 1 ? "s" : ""} of historical data, your **${r.bulbType}** bulbs are typically removed **${r.medianDBE} days before Easter**.`
   );
 
+  if (r.weatherAdjusted && r.weatherAdjustedDBE != null && r.weatherAdjustedDBE !== r.baselineDBE) {
+    const gdhInfo = r.weatherContext?.gdhModel;
+    if (gdhInfo?.projectedDBE != null) {
+      parts.push(
+        `The degree-hours model adjusted this to **${r.weatherAdjustedDBE} days** based on ${r.targetYear} temperature patterns (target: ${gdhInfo.targetGDH} degree-hours >40°F).`
+      );
+    } else {
+      parts.push(
+        `Weather data adjusted this to **${r.weatherAdjustedDBE} days** for ${r.targetYear} conditions.`
+      );
+    }
+  }
+
   parts.push(
     `With Easter on **${r.easterDate}**, the recommended removal date is **${r.recommendedRemovalDate}**.`
   );

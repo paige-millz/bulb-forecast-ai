@@ -164,7 +164,7 @@ const Index = () => {
         {results.length > 0 && results.some(r => r.notes?.length > 0) && (() => {
           const allNotes = [...new Set(results.flatMap(r => r.notes || []))];
           const displayNotes = results.length > 1
-            ? allNotes.filter(n => !n.match(/paired weather|No weather data|Weather correlation|Weather data exists|Could not load weather/i))
+            ? allNotes.filter(n => !n.match(/paired weather|No weather data|Weather correlation|Weather data exists|Could not load weather|GDH model|Weather regression/i))
             : allNotes;
           return displayNotes.length > 0 ? (
             <div className="space-y-2">

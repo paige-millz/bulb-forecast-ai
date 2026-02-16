@@ -3,15 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, TrendingDown, CalendarCheck, CalendarRange, Database, Shield, Thermometer, Clock } from "lucide-react";
 import type { EdgeFunctionResponse } from "@/lib/bulb-utils";
 
-interface WeatherContext {
-  historicalAvgTemp: number;
-  historicalAvgDegreeHours: number;
-  yearsWithData: number;
-  currentYear: { avgTemp: number; degreeHours: number; days: number } | null;
-}
-
 interface KPIPanelProps {
-  data: (EdgeFunctionResponse & { weatherContext?: WeatherContext | null }) | null;
+  data: EdgeFunctionResponse | null;
   easterDate: string;
 }
 
@@ -22,7 +15,7 @@ const confidenceColor: Record<string, string> = {
 };
 
 export function KPIPanel({ data, easterDate }: KPIPanelProps) {
-  const wc = (data as any)?.weatherContext as WeatherContext | null | undefined;
+  const wc = data?.weatherContext ?? null;
 
   const items = [
     { label: "Easter Date", icon: Calendar, value: data?.easterDate ?? easterDate ?? "—" },
