@@ -63,7 +63,13 @@ export function ExcelUpload({ onUploadComplete }: ExcelUploadProps) {
       // Validate: need at least year, bulb_type, and easter_date
       // Also filter out junk rows with no removal_date AND no dbe
       const valid = records.filter(
-        (r) => r.year > 0 && r.bulb_type && r.easter_date && (r.removal_date || r.dbe)
+        (r) =>
+          r.year > 0 &&
+          r.bulb_type &&
+          r.easter_date &&
+          (r.removal_date || r.dbe) &&
+          !/^(additional|notes)/i.test(r.bulb_type.trim()) &&
+          !/^\d{4}\s+\w/.test(r.bulb_type.trim())
       );
       const skipped = records.length - valid.length;
       if (skipped > 0) {
