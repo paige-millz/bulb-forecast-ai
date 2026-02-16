@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { Loader2, Download, Trash2, AlertTriangle, CloudSun, ChevronDown } from "lucide-react";
 import bmfLogo from "@/assets/bmf-logo.png";
 import { Button } from "@/components/ui/button";
@@ -132,35 +133,42 @@ const Index = () => {
               <div className="w-16 h-px bg-primary/30 mx-auto mt-1 mb-1" />
               <p className="text-sm text-muted-foreground">Easter Bulb Removal Planner</p>
             </div>
-
-            {bulbCount > 0 && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/5 absolute right-8">
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Clear Data
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Clear All Historical Data?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will permanently delete all {bulbCount} bulb records. This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleClearData}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      disabled={clearing}
-                    >
-                      {clearing ? "Clearing..." : "Delete All Records"}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
+            <div className="flex items-center gap-2 absolute right-8">
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/weather" className="gap-1">
+                  <CloudSun className="h-4 w-4" />
+                  Weather
+                </Link>
+              </Button>
+              {bulbCount > 0 && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/5">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Clear Data
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Clear All Historical Data?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete all {bulbCount} bulb records. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleClearData}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        disabled={clearing}
+                      >
+                        {clearing ? "Clearing..." : "Delete All Records"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
           </div>
         </div>
       </header>
