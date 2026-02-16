@@ -1,7 +1,9 @@
 import { useState, useCallback } from "react";
-import { Upload, CloudSun, Loader2 } from "lucide-react";
+import { Upload, CloudSun, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -19,6 +21,9 @@ interface WeatherRow {
 
 export function WeatherUpload({ onUploadComplete }: WeatherUploadProps) {
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [latitude, setLatitude] = useState("40.75");
+  const [longitude, setLongitude] = useState("-75.25");
 
   const processFile = useCallback(async (file: File) => {
     setLoading(true);
@@ -48,7 +53,7 @@ export function WeatherUpload({ onUploadComplete }: WeatherUploadProps) {
           tavg_f: tavg,
           tmin_f: tminIdx >= 0 ? parseFloat(cols[tminIdx]) || null : null,
           tmax_f: tmaxIdx >= 0 ? parseFloat(cols[tmaxIdx]) || null : null,
-          source: sourceIdx >= 0 ? cols[sourceIdx] || null : null,
+          source: sourceIdx >= 0 ? cols[sourceIdx] || "csv_upload" : "csv_upload",
         });
       }
 
@@ -57,13 +62,14 @@ export function WeatherUpload({ onUploadComplete }: WeatherUploadProps) {
         return;
       }
 
-      for (let i = 0; i < rows.length; i += 500) {
-        const chunk = rows.slice(i, i + 500);
-        const { error } = await supabase.from("weather_daily").upsert(chunk, { onConflict: "date" });
-        if (error) throw error;
-      }
+      // Route through edge function to use service role key
+      const { data, error } = await supabase.functions.invoke("sync-weather", {
+        body: { rows },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      toast({ title: "Weather data uploaded", description: `${rows.length} days imported.` });
+      toast({ title: "Weather data uploaded", description: `${data?.daysImported ?? rows.length} days imported.` });
       onUploadComplete();
     } catch (err: any) {
       toast({ title: "Upload error", description: err.message, variant: "destructive" });
@@ -72,35 +78,90 @@ export function WeatherUpload({ onUploadComplete }: WeatherUploadProps) {
     }
   }, [onUploadComplete]);
 
+  const handleApiSync = async () => {
+    setSyncing(true);
+    try {
+      // Sync Feb 1 to Apr 30 for years 2013 through current year
+      const currentYear = new Date().getFullYear();
+      let totalImported = 0;
+
+      for (let year = 2013; year <= currentYear; year++) {
+        const startDate = `${year}-02-01`;
+        const endDate = `${year}-04-30`;
+
+        const { data, error } = await supabase.functions.invoke("sync-weather", {
+          body: { latitude: parseFloat(latitude), longitude: parseFloat(longitude), startDate, endDate },
+        });
+        if (error) throw error;
+        if (data?.error) {
+          console.warn(`Weather sync ${year}: ${data.error}`);
+          continue;
+        }
+        totalImported += data?.daysImported ?? 0;
+      }
+
+      toast({ title: "Weather sync complete", description: `${totalImported} days synced from Open-Meteo (2013–${currentYear}).` });
+      onUploadComplete();
+    } catch (err: any) {
+      toast({ title: "Sync error", description: err.message, variant: "destructive" });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   return (
     <Card className="border-accent/30 bg-accent/5">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
           <CloudSun className="h-5 w-5 text-accent" />
-          Upload Weather CSV
+          Weather Data
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground mb-3">
-          Upload a CSV with columns: date, tavg_f, tmin_f, tmax_f, source.
-        </p>
-        <label className="cursor-pointer">
-          <input
-            type="file"
-            accept=".csv"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) processFile(f);
-            }}
-          />
-          <Button variant="outline" size="sm" disabled={loading} asChild>
-            <span>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
-              {loading ? "Uploading..." : "Upload Weather CSV"}
-            </span>
+      <CardContent className="space-y-4">
+        {/* CSV Upload */}
+        <div>
+          <p className="text-sm text-muted-foreground mb-2">
+            Upload a CSV with columns: date, tavg_f, tmin_f, tmax_f
+          </p>
+          <label className="cursor-pointer">
+            <input
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) processFile(f);
+              }}
+            />
+            <Button variant="outline" size="sm" disabled={loading || syncing} asChild>
+              <span>
+                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                {loading ? "Uploading..." : "Upload Weather CSV"}
+              </span>
+            </Button>
+          </label>
+        </div>
+
+        {/* API Sync */}
+        <div className="border-t border-border pt-3">
+          <p className="text-sm text-muted-foreground mb-2">
+            Or sync from Open-Meteo API (free, no key needed)
+          </p>
+          <div className="grid grid-cols-2 gap-2 mb-2">
+            <div>
+              <Label className="text-xs">Latitude</Label>
+              <Input value={latitude} onChange={(e) => setLatitude(e.target.value)} className="h-8 text-sm" />
+            </div>
+            <div>
+              <Label className="text-xs">Longitude</Label>
+              <Input value={longitude} onChange={(e) => setLongitude(e.target.value)} className="h-8 text-sm" />
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleApiSync} disabled={loading || syncing}>
+            {syncing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+            {syncing ? "Syncing..." : "Sync from Open-Meteo"}
           </Button>
-        </label>
+        </div>
       </CardContent>
     </Card>
   );

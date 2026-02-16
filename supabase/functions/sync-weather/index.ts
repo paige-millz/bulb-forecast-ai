@@ -12,16 +12,36 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { latitude, longitude, startDate, endDate } = await req.json();
+    const body = await req.json();
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Mode 1: CSV data upload
+    if (body.rows && Array.isArray(body.rows)) {
+      const rows = body.rows;
+      let imported = 0;
+      for (let i = 0; i < rows.length; i += 500) {
+        const chunk = rows.slice(i, i + 500);
+        const { error } = await supabase.from("weather_daily").upsert(chunk, { onConflict: "date" });
+        if (error) throw error;
+        imported += chunk.length;
+      }
+      return new Response(
+        JSON.stringify({ success: true, daysImported: imported }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Mode 2: Open-Meteo API sync
+    const { latitude, longitude, startDate, endDate } = body;
     if (!latitude || !longitude || !startDate || !endDate) {
       return new Response(
-        JSON.stringify({ error: "latitude, longitude, startDate, endDate are required" }),
+        JSON.stringify({ error: "Provide either 'rows' array or latitude/longitude/startDate/endDate" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Fetch from Open-Meteo (free, no API key needed)
     const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${latitude}&longitude=${longitude}&start_date=${startDate}&end_date=${endDate}&daily=temperature_2m_max,temperature_2m_min,temperature_2m_mean&temperature_unit=fahrenheit&timezone=America%2FNew_York`;
 
     const resp = await fetch(url);
@@ -36,7 +56,7 @@ Deno.serve(async (req) => {
     const tmin: (number | null)[] = json.daily?.temperature_2m_min ?? [];
     const tavg: (number | null)[] = json.daily?.temperature_2m_mean ?? [];
 
-    const rows = dates
+    const apiRows = dates
       .map((date: string, i: number) => ({
         date,
         tmax_f: tmax[i],
@@ -46,26 +66,21 @@ Deno.serve(async (req) => {
       }))
       .filter((r: any) => r.tavg_f != null);
 
-    if (rows.length === 0) {
+    if (apiRows.length === 0) {
       return new Response(
         JSON.stringify({ error: "No weather data returned for the given parameters." }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Upsert into weather_daily
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    for (let i = 0; i < rows.length; i += 500) {
-      const chunk = rows.slice(i, i + 500);
+    for (let i = 0; i < apiRows.length; i += 500) {
+      const chunk = apiRows.slice(i, i + 500);
       const { error } = await supabase.from("weather_daily").upsert(chunk, { onConflict: "date" });
       if (error) throw error;
     }
 
     return new Response(
-      JSON.stringify({ success: true, daysImported: rows.length, range: { start: dates[0], end: dates[dates.length - 1] } }),
+      JSON.stringify({ success: true, daysImported: apiRows.length, range: { start: dates[0], end: dates[dates.length - 1] } }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err: any) {
