@@ -359,6 +359,9 @@ const Weather = () => {
                           ? `${easterWeekComparison.forecastAvg.toFixed(1)}°F`
                           : "N/A"}
                       </span>
+                      {easterWeekComparison.forecastAvg === null && (
+                        <p className="text-xs text-muted-foreground mt-1">Easter is outside the 16-day forecast window</p>
+                      )}
                       {diff !== null && (
                         <span
                           className={`flex items-center gap-0.5 text-sm font-medium ${
