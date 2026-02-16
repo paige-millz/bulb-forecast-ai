@@ -77,8 +77,8 @@ Deno.serve(async (req) => {
     let { data: records, error: recErr } = await query;
     if (recErr) throw recErr;
 
-    // 3. Fallback if < 4 records
-    if (!records || records.length < 4) {
+    // 3. Fallback if < 2 records
+    if (!records || records.length < 2) {
       const label = bulbType !== "All" ? bulbType : "selected filter";
       notes.push(`Insufficient history for "${label}" (${records?.length ?? 0} records). Using full dataset.`);
       const { data: allRecords, error: allErr } = await supabase.from("bulb_records").select("*");
@@ -120,25 +120,104 @@ Deno.serve(async (req) => {
     const windowStart = addDays(easter, -Math.round(p75DBE)); // earlier pull
     const windowEnd = addDays(easter, -Math.round(p25DBE));   // later pull
 
-    // 7. Confidence scoring
+    // 7. Confidence scoring — relaxed thresholds for small datasets
     let confidence: "High" | "Medium" | "Low";
-    if (nRecords >= 10 && iqr <= 4) {
+    if (nRecords >= 3 && iqr <= 5) {
       confidence = "High";
-    } else if (nRecords >= 6 && iqr <= 7) {
+    } else if (nRecords >= 2 && iqr <= 8) {
       confidence = "Medium";
     } else {
       confidence = "Low";
     }
 
     // Data quality warnings
-    if (nRecords < 6) {
+    if (nRecords < 3) {
       notes.push("Limited historical data. Results may be less reliable.");
     }
     if (iqr > 8) {
       notes.push("High variability in historical timing. Consider reviewing data quality.");
     }
 
-    // 8. Build response
+    // 8. Weather data integration
+    let weatherContext: any = null;
+    try {
+      // Query weather data for the removal-to-Easter window in past years
+      const removalMonth = recommendedDate.getMonth() + 1;
+      const easterMonth = easter.getMonth() + 1;
+
+      // Get all weather data we have
+      const { data: weatherData, error: weatherErr } = await supabase
+        .from("weather_daily")
+        .select("date, tavg_f, tmax_f, tmin_f")
+        .order("date", { ascending: true });
+
+      if (!weatherErr && weatherData && weatherData.length > 0) {
+        // Calculate degree hours above 40F for the recommended window
+        // Look at historical weather for the same calendar window
+        const removalDOY = getDayOfYear(recommendedDate);
+        const easterDOY = getDayOfYear(easter);
+
+        // Group weather by year and filter to the removal-to-Easter window
+        const yearGroups: Record<number, { tavg_f: number; date: string }[]> = {};
+        for (const w of weatherData) {
+          const wDate = new Date(w.date);
+          const wYear = wDate.getFullYear();
+          const wDOY = getDayOfYear(wDate);
+          // Include days in the removal-to-Easter window (by day-of-year)
+          if (wDOY >= removalDOY && wDOY <= easterDOY) {
+            if (!yearGroups[wYear]) yearGroups[wYear] = [];
+            yearGroups[wYear].push({ tavg_f: Number(w.tavg_f), date: w.date });
+          }
+        }
+
+        const yearKeys = Object.keys(yearGroups).map(Number);
+        if (yearKeys.length > 0) {
+          // Calculate avg temp and degree hours for each year in the window
+          const yearStats = yearKeys.map((yr) => {
+            const days = yearGroups[yr];
+            const avgTemp = days.reduce((s, d) => s + d.tavg_f, 0) / days.length;
+            // Degree hours above 40F: sum of (temp - 40) * 24 for each day where temp > 40
+            const degreeHours = days.reduce((s, d) => {
+              return s + (d.tavg_f > 40 ? (d.tavg_f - 40) * 24 : 0);
+            }, 0);
+            return { year: yr, avgTemp: Math.round(avgTemp * 10) / 10, degreeHours: Math.round(degreeHours), days: days.length };
+          });
+
+          const overallAvgTemp = yearStats.reduce((s, y) => s + y.avgTemp, 0) / yearStats.length;
+          const overallAvgDegreeHours = yearStats.reduce((s, y) => s + y.degreeHours, 0) / yearStats.length;
+
+          // Check if current year data exists
+          const currentYearStats = yearStats.find((y) => y.year === targetYear);
+
+          weatherContext = {
+            historicalAvgTemp: Math.round(overallAvgTemp * 10) / 10,
+            historicalAvgDegreeHours: Math.round(overallAvgDegreeHours),
+            yearsWithData: yearKeys.length,
+            yearStats,
+            currentYear: currentYearStats || null,
+          };
+
+          // Add weather-informed notes
+          if (currentYearStats) {
+            const tempDiff = currentYearStats.avgTemp - overallAvgTemp;
+            if (tempDiff > 3) {
+              notes.push(`Current year is ${Math.round(tempDiff)}°F warmer than average in the removal window. Consider removing earlier.`);
+            } else if (tempDiff < -3) {
+              notes.push(`Current year is ${Math.round(Math.abs(tempDiff))}°F cooler than average in the removal window. Consider removing later.`);
+            }
+          } else {
+            notes.push("No weather data available for the target year yet. Historical averages used for context.");
+          }
+        }
+      } else if (!weatherErr && (!weatherData || weatherData.length === 0)) {
+        notes.push("No weather data synced yet. Upload or sync weather data for temperature-adjusted insights.");
+      }
+    } catch (_weatherError) {
+      // Weather integration is optional — don't fail the whole request
+      notes.push("Could not load weather data. Recommendations based on historical DBE only.");
+    }
+
+    // 9. Build response
     const response = {
       targetYear,
       easterDate,
@@ -156,6 +235,7 @@ Deno.serve(async (req) => {
       },
       dbeValues: sorted,
       notes,
+      weatherContext,
     };
 
     return new Response(JSON.stringify(response), {
@@ -168,3 +248,9 @@ Deno.serve(async (req) => {
     );
   }
 });
+
+function getDayOfYear(d: Date): number {
+  const start = new Date(d.getFullYear(), 0, 0);
+  const diff = d.getTime() - start.getTime();
+  return Math.floor(diff / 86400000);
+}
