@@ -126,13 +126,13 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b-2 border-primary/20 bg-card">
-        <div className="container max-w-6xl py-1">
-          <div className="flex items-center justify-between">
-            <div className="text-center flex-1 overflow-hidden">
-              <img src={bmfLogo} alt="Blue Mountain Farms" className="h-72 mx-auto -mb-24 -mt-16" />
+        <div className="container max-w-6xl px-3 sm:px-6 py-1">
+          <div className="flex flex-col items-center">
+            <div className="text-center w-full overflow-hidden">
+              <img src={bmfLogo} alt="Blue Mountain Farms" className="h-48 sm:h-72 mx-auto -mb-16 sm:-mb-24 -mt-8 sm:-mt-16" />
               <p className="text-sm text-muted-foreground mt-3">Easter Bulb Removal Planner</p>
             </div>
-            <div className="flex items-center gap-2 absolute right-8">
+            <div className="flex items-center gap-2 py-2">
               <Button variant="outline" size="sm" asChild>
                 <Link to="/weather" className="gap-1">
                   <CloudSun className="h-4 w-4" />
@@ -143,8 +143,9 @@ const Index = () => {
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/5">
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Clear Data
+                      <Trash2 className="h-4 w-4 mr-1 sm:mr-2" />
+                      <span className="hidden sm:inline">Clear Data</span>
+                      <span className="sm:hidden">Clear</span>
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
@@ -172,7 +173,7 @@ const Index = () => {
         </div>
       </header>
 
-      <main className="container max-w-6xl py-6 space-y-6">
+      <main className="container max-w-6xl px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {/* Notes / Warnings */}
         {results.length > 0 && results.some(r => r.notes?.length > 0) && (
           <div className="space-y-2">
@@ -192,7 +193,7 @@ const Index = () => {
             <CardTitle className="text-lg">Configuration</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="target-year">Target Easter Year</Label>
                 <Input
@@ -275,7 +276,7 @@ const Index = () => {
             )}
 
             {/* Export */}
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <Button
                 variant="outline"
                 onClick={() => {

@@ -72,7 +72,7 @@ export function KPIPanel({ data, easterDate }: KPIPanelProps) {
           </Badge>
         </div>
       )}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
         {items.map((item) => (
           <Card key={item.label} className="border-t-2 border-t-primary/40 shadow-sm">
             <CardContent className="p-4">
@@ -80,7 +80,7 @@ export function KPIPanel({ data, easterDate }: KPIPanelProps) {
                 <item.icon className="h-4 w-4 text-accent" />
                 <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{item.label}</span>
               </div>
-              <p className={`text-lg font-bold truncate ${item.highlight ? "text-primary" : "text-foreground"}`}>
+              <p className={`text-base sm:text-lg font-bold truncate ${item.highlight ? "text-primary" : "text-foreground"}`}>
                 {item.value}
               </p>
             </CardContent>
