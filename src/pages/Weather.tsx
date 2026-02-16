@@ -253,24 +253,25 @@ const Weather = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b-2 border-primary/20 bg-card">
-        <div className="container max-w-6xl py-1">
-          <div className="flex items-center justify-between">
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/" className="gap-1">
-                <ArrowLeft className="h-4 w-4" />
-                Planner
-              </Link>
-            </Button>
-            <div className="text-center flex-1 overflow-hidden">
-              <img src={bmfLogo} alt="Blue Mountain Farms" className="h-72 mx-auto -mb-28 -mt-12" />
+        <div className="container max-w-6xl px-3 sm:px-6 py-1">
+          <div className="flex flex-col items-center">
+            <div className="text-center w-full overflow-hidden">
+              <img src={bmfLogo} alt="Blue Mountain Farms" className="h-48 sm:h-72 mx-auto -mb-16 sm:-mb-24 -mt-8 sm:-mt-16" />
               <p className="text-sm text-muted-foreground mt-1">Weather Insights</p>
             </div>
-            <div className="w-20" />
+            <div className="py-2">
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/" className="gap-1">
+                  <ArrowLeft className="h-4 w-4" />
+                  Planner
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="container max-w-6xl py-6 space-y-6">
+      <main className="container max-w-6xl px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {/* Easter Forecast */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -299,7 +300,7 @@ const Weather = () => {
             ) : forecastChartData.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">No forecast data available.</p>
             ) : (
-              <div className="h-[350px]">
+              <div className="h-[280px] sm:h-[350px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={forecastChartData}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
@@ -442,7 +443,7 @@ const Weather = () => {
                 No historical weather data. Import data on the Planner page.
               </p>
             ) : (
-              <div className="h-[400px]">
+              <div className="h-[300px] sm:h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
