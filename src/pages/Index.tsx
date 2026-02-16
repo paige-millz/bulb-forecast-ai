@@ -58,7 +58,7 @@ const Index = () => {
   const [bulbCount, setBulbCount] = useState(0);
   const [generating, setGenerating] = useState(false);
   const [clearing, setClearing] = useState(false);
-  const [result, setResult] = useState<EdgeFunctionResponse | null>(null);
+  const [results, setResults] = useState<EdgeFunctionResponse[]>([]);
 
   const easter = computeEasterDate(targetYear);
   const easterStr = formatDate(easter);
@@ -78,15 +78,27 @@ const Index = () => {
 
   const handleGenerate = async () => {
     setGenerating(true);
-    setResult(null);
+    setResults([]);
     try {
-      const resp = await callBulbRecommendations(targetYear, selectedBulb);
-      if (resp.error) {
-        toast({ title: "Error", description: resp.error, variant: "destructive" });
-        setGenerating(false);
-        return;
+      if (selectedBulb === "All" && bulbTypes.length > 0) {
+        // Generate per-bulb-type recommendations
+        const allResults = await Promise.all(
+          bulbTypes.map((bt) => callBulbRecommendations(targetYear, bt))
+        );
+        const valid = allResults.filter((r) => !r.error);
+        if (valid.length === 0) {
+          toast({ title: "Error", description: "No recommendations could be generated.", variant: "destructive" });
+        } else {
+          setResults(valid);
+        }
+      } else {
+        const resp = await callBulbRecommendations(targetYear, selectedBulb);
+        if (resp.error) {
+          toast({ title: "Error", description: resp.error, variant: "destructive" });
+        } else {
+          setResults([resp]);
+        }
       }
-      setResult(resp);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -99,7 +111,7 @@ const Index = () => {
     try {
       await clearAllBulbRecords();
       toast({ title: "Data cleared", description: "All historical records removed." });
-      setResult(null);
+      setResults([]);
       await refreshData();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -154,9 +166,9 @@ const Index = () => {
 
       <main className="container max-w-6xl py-6 space-y-6">
         {/* Notes / Warnings */}
-        {result?.notes && result.notes.length > 0 && (
+        {results.length > 0 && results.some(r => r.notes?.length > 0) && (
           <div className="space-y-2">
-            {result.notes.map((note, i) => (
+            {[...new Set(results.flatMap(r => r.notes || []))].map((note, i) => (
               <Alert key={i} className="border-accent/50 bg-accent/10">
                 <AlertTriangle className="h-4 w-4 text-accent" />
                 <AlertDescription className="text-accent-foreground">{note}</AlertDescription>
@@ -225,28 +237,35 @@ const Index = () => {
           </Card>
         </div>
 
-        {/* KPI Panel */}
-        <KPIPanel data={result} easterDate={easterStr} />
+        {/* KPI Panel — only for single bulb type */}
+        {results.length === 1 && (
+          <KPIPanel data={results[0]} easterDate={easterStr} />
+        )}
 
         {/* Results */}
-        {result && !result.error && (
+        {results.length > 0 && (
           <>
-            <RecommendationsTable data={result} />
+            <RecommendationsTable data={results} />
 
-            <DBEDistributionChart dbeValues={result.dbeValues} medianDBE={result.medianDBE} />
+            {results.length === 1 && (
+              <DBEDistributionChart dbeValues={results[0].dbeValues} medianDBE={results[0].medianDBE} />
+            )}
 
             {/* Export */}
             <div className="flex gap-3">
               <Button
                 variant="outline"
-                onClick={() => downloadFile(exportCSV(result), "bulb-recommendation.csv", "text/csv")}
+                onClick={() => {
+                  const csv = results.map(r => exportCSV(r)).join("\n");
+                  downloadFile(csv, "bulb-recommendation.csv", "text/csv");
+                }}
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
               </Button>
               <Button
                 variant="outline"
-                onClick={() => downloadFile(exportJSON(result), "bulb-recommendation.json", "application/json")}
+                onClick={() => downloadFile(JSON.stringify(results.length === 1 ? results[0] : results, null, 2), "bulb-recommendation.json", "application/json")}
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export JSON
