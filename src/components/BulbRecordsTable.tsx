@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Pencil, Check, X, Trash2, Plus } from "lucide-react";
+import { Pencil, Check, X, Trash2, Plus, Download } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { downloadFile } from "@/lib/bulb-utils";
 
 interface BulbRow {
   id: string;
@@ -155,12 +156,29 @@ export function BulbRecordsTable() {
     <Card>
       <CardHeader className="pb-3 flex flex-row items-center justify-between">
         <CardTitle className="text-lg">Bulb Records ({records.length})</CardTitle>
-        <Dialog open={addOpen} onOpenChange={setAddOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" variant="outline">
-              <Plus className="h-4 w-4 mr-1" /> Add Record
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1"
+            onClick={() => {
+              const header = "year,bulb_type,easter_date,removal_date,dbe,avg_temp_from_removal_f,degree_hours_above_40f,yield_notes,yield_quality,grower_notes";
+              const rows = records.map((r) =>
+                [r.year, r.bulb_type, r.easter_date, r.removal_date ?? "", r.dbe ?? "", r.avg_temp_from_removal_f ?? "", r.degree_hours_above_40f ?? "", `"${(r.yield_notes ?? "").replace(/"/g, '""')}"`, `"${(r.yield_quality ?? "").replace(/"/g, '""')}"`, `"${(r.grower_notes ?? "").replace(/"/g, '""')}"`].join(",")
+              );
+              downloadFile([header, ...rows].join("\n"), "bulb_records.csv", "text/csv");
+            }}
+            disabled={records.length === 0}
+          >
+            <Download className="h-4 w-4" />
+            CSV
+          </Button>
+          <Dialog open={addOpen} onOpenChange={setAddOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="outline">
+                <Plus className="h-4 w-4 mr-1" /> Add Record
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add Bulb Record</DialogTitle>
@@ -200,8 +218,9 @@ export function BulbRecordsTable() {
                 {adding ? "Adding..." : "Add Record"}
               </Button>
             </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto">

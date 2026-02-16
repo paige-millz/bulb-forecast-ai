@@ -261,8 +261,8 @@ const Weather = () => {
                 Planner
               </Link>
             </Button>
-            <div className="text-center flex-1">
-              <img src={bmfLogo} alt="Blue Mountain Farms" className="h-72 mx-auto" />
+            <div className="text-center flex-1 overflow-hidden">
+              <img src={bmfLogo} alt="Blue Mountain Farms" className="h-72 mx-auto -mb-28 -mt-12" />
               <p className="text-sm text-muted-foreground mt-1">Weather Insights</p>
             </div>
             <div className="w-20" />
