@@ -1,52 +1,62 @@
 
 
-# Weather History and Forecast Page
+# Easter Week Summary Card and CSV Export
 
 ## Overview
 
-Create a new "/weather" page that displays historical weather data from the database in an interactive chart, alongside a forecast for the upcoming Easter season using the Open-Meteo forecast API. This gives a clear visual of past temperature trends and what to expect leading up to the next Easter.
+Add a summary comparison card showing the predicted Easter week average temperature versus historical Easter week averages, and add a CSV export button for weather data.
 
-## What You'll See
+## Changes
 
-1. **Historical Weather Chart** -- A line chart showing daily average temperatures (with min/max range) for each year's Feb-Apr season, pulled from the `weather_daily` table.
+### `src/pages/Weather.tsx`
 
-2. **Upcoming Easter Forecast** -- A separate chart/section showing the weather forecast for the next 7-16 days from Open-Meteo's free forecast API, overlaid with the upcoming Easter date marker so you can see predicted conditions around removal time.
+**1. Easter Week Summary Card** (placed between the forecast chart and historical chart)
 
-3. **Year-over-Year Comparison** -- A view comparing Feb-Apr temperature patterns across years so you can see how this season stacks up against prior ones.
+- Compute the "Easter week" as Easter Sunday +/- 3 days (7-day window)
+- **Forecast Easter week avg**: Average the forecast `tavg` values for dates falling within the Easter week window. Show "N/A" if Easter is outside the forecast range.
+- **Historical Easter week avgs**: For each year in the historical data, compute Easter date via `computeEasterDate(year)`, find the 7-day window around it, average `tavg_f` for those dates. Display as a small table or list showing each year's Easter week avg.
+- **Overall historical mean**: Average of all years' Easter week averages, displayed prominently for quick comparison.
+- Visual indicators: color the forecast value green/red/neutral depending on whether it's warmer or cooler than the historical mean.
 
-4. **Navigation** -- A simple nav bar or tabs added to the header so you can move between the main Planner page and the Weather page.
+Card layout:
+```text
++--------------------------------------------------+
+| Easter Week Temperature Comparison               |
+|                                                  |
+|  Forecast (2026):  48.2 F   [arrow up, green]    |
+|  Historical Avg:   44.7 F   (across 12 years)    |
+|                                                  |
+|  Year   Easter Date   Avg Temp                   |
+|  2024   Mar 31        46.1 F                     |
+|  2023   Apr 9         42.3 F                     |
+|  ...                                             |
++--------------------------------------------------+
+```
 
----
+**2. CSV Export Button**
+
+- Add a "Download CSV" button to each card's header area (using the `Download` icon from lucide-react)
+- **Forecast CSV**: Exports the 16-day forecast data (date, avg, min, max)
+- **Historical CSV**: Exports the full historical weather data from the database (date, tavg_f, tmin_f, tmax_f)
+- Reuse the existing `downloadFile` utility from `bulb-utils.ts`
 
 ## Technical Details
 
-### New Files
+### Easter Week Computation (new `useMemo` block)
 
-**`src/pages/Weather.tsx`**
-- Page component with two main sections:
-  - "Historical Temperatures" -- queries `weather_daily` for all stored records, groups by year, renders a multi-line Recharts `LineChart` (one line per year for Feb 1 - Apr 30)
-  - "Easter Season Forecast" -- calls the `sync-weather` edge function (or a new forecast mode) to get the Open-Meteo 16-day forecast, displays as a line chart with the upcoming Easter date marked via a `ReferenceLine`
-- Uses existing Recharts library and Card/chart UI components
+```typescript
+// For each historical year, compute Easter, find weather records within +/- 3 days
+// For forecast, filter forecastData to the same Easter week window
+// Return: { forecastAvg, historicalByYear: [{year, easterDate, avg}], overallHistoricalAvg }
+```
 
-**`supabase/functions/sync-weather/index.ts`** (updated)
-- Add a **Mode 3: Forecast** -- when body contains `{ forecast: true, latitude, longitude }`, call the Open-Meteo forecast API (`https://api.open-meteo.com/v1/forecast?...&daily=temperature_2m_max,temperature_2m_min,temperature_2m_mean&forecast_days=16`) and return the data directly (no DB upsert needed)
+### CSV Export Functions
 
-### Modified Files
+Two simple functions that convert the chart data arrays to CSV strings and trigger download via the existing `downloadFile` helper.
 
-**`src/App.tsx`**
-- Add route: `<Route path="/weather" element={<Weather />} />`
+### New Imports
 
-**`src/pages/Index.tsx`**
-- Add a navigation link to "/weather" in the header area
-
-### Data Flow
-
-1. Historical data: `weather_daily` table -> Supabase query -> grouped by year -> multi-line chart
-2. Forecast data: Edge function -> Open-Meteo forecast API -> returned to client -> rendered as chart
-3. Easter date calculated client-side using existing `computeEasterDate()` utility
-
-### Chart Design
-
-- **Historical chart**: X-axis = day of season (Feb 1 = day 1 through Apr 30), Y-axis = temperature (F). One colored line per year. Tooltip shows date and temps.
-- **Forecast chart**: X-axis = date, Y-axis = temperature (F). Shows Tavg line with Tmin/Tmax as a shaded area. Easter date shown as a vertical reference line.
+- `Download`, `TrendingUp`, `TrendingDown` from `lucide-react`
+- `downloadFile` from `@/lib/bulb-utils`
+- `CardDescription` from card component
 
