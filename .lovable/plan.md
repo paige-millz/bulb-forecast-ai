@@ -1,65 +1,39 @@
 
 
-# Fix: Clean Up Junk Bulb Records and Prevent Future Bad Imports
+# Revert Import Filters, Keep Recommendation Engine Clean
 
-## Problem
-The database contains non-data rows imported from the CSV (grower notes, chemical application notes, "Additional Notes:" headers). When "All Types" is selected, the recommendation engine tries to process each one, generating misleading warnings.
+## What Changes
 
-Affected junk entries:
-- "Additional Notes:"
-- "2025 bonzi tulips 20 ppm drench 3-4 days out"
-- "2025 florel drench hyac 500 ppm =3 gal florel 2 gal water 2x"
-- "tulip ovals early" (has no removal dates or DBE in any year)
+The grower wants all their data (including notes like "2025 bonzi tulips..." and "Additional Notes:") imported and visible in the records table. The fix should only prevent those entries from being used in the recommendation calculations.
 
-## Solution (3 parts)
+## Changes
 
-### 1. Clean existing database
-Run a migration to delete all bulb_records rows that have no `removal_date` AND no `dbe` value, since these are not actionable data.
+### 1. Revert ExcelUpload.tsx import filter
+Remove the two regex filters added in the last edit. Go back to the original validation that only requires `year > 0`, `bulb_type`, `easter_date`, and either `removal_date` or `dbe`.
 
-### 2. Harden the CSV import filter
-Update `ExcelUpload.tsx` to add stricter validation:
-- Keep the existing filter (must have `removal_date` or `dbe`)
-- Add a check that `bulb_type` does not look like a notes/comment row (e.g., starts with a year like "2025 ..." or contains "Notes:" as a substring)
+### 2. Revert fetchBulbTypes in bulb-utils.ts
+Remove the `.not("removal_date", "is", null)` filter so all bulb types (including note-like entries) appear in the records table and dropdown.
 
-### 3. Filter junk in the "All Types" generation flow
-Update `Index.tsx` so that when generating recommendations for "All Types", only bulb types that have at least one record with a valid `removal_date` or `dbe` are included. This prevents the engine from even attempting to process note-like entries.
+### 3. Filter only in the recommendation generation flow
+In `Index.tsx`, when "All Types" is selected and we loop over `bulbTypes`, filter the list to only include types that have at least one record with a valid `removal_date` or `dbe`. This keeps junk types out of the recommendation engine without hiding them from the grower.
 
-## Technical Details
+Specifically, before calling `callBulbRecommendations` for each type, query the database for types that have valid data:
 
-**Database cleanup SQL:**
-```sql
-DELETE FROM bulb_records
-WHERE removal_date IS NULL AND dbe IS NULL;
-```
-
-**ExcelUpload.tsx** -- enhance the `valid` filter (~line 65):
 ```typescript
-const valid = records.filter(
-  (r) =>
-    r.year > 0 &&
-    r.bulb_type &&
-    r.easter_date &&
-    (r.removal_date || r.dbe) &&
-    !/^(additional|notes)/i.test(r.bulb_type.trim()) &&
-    !/^\d{4}\s+\w/.test(r.bulb_type.trim()) // skip "2025 bonzi..." style notes
-);
+// In handleGenerate, before the Promise.all:
+const { data: validTypes } = await supabase
+  .from("bulb_records")
+  .select("bulb_type")
+  .not("removal_date", "is", null);
+const validTypeSet = new Set(validTypes?.map(r => r.bulb_type) || []);
+const typesToProcess = bulbTypes.filter(bt => validTypeSet.has(bt));
 ```
 
-**Index.tsx** -- filter bulb types before generating (~line 85):
-Query only bulb types that have at least one record with a non-null `removal_date` or `dbe`, so note-only entries are excluded from the "All" run. This can be done by fetching valid types from the database using a filtered query, or by filtering the `bulbTypes` list against a subquery.
+### 4. Edge function already handles this gracefully
+The `bulb-recommendations` edge function already filters out records without valid DBE values (step 4 in the code) and falls back when fewer than 2 records exist. No changes needed there.
 
-**bulb-utils.ts** -- update `fetchBulbTypes` to only return types that have actual data:
-```typescript
-export async function fetchBulbTypes(): Promise<string[]> {
-  const { data } = await supabase
-    .from("bulb_records")
-    .select("bulb_type")
-    .not("removal_date", "is", null)
-    .order("bulb_type");
-  if (!data) return [];
-  return [...new Set(data.map((r) => r.bulb_type))];
-}
-```
-
-This is the most impactful single change -- it ensures only bulb types with real removal data appear in the dropdown and in "All Types" generation.
+## Summary of File Changes
+- **src/components/ExcelUpload.tsx** -- remove the two regex lines (revert to original filter)
+- **src/lib/bulb-utils.ts** -- remove `.not("removal_date", "is", null)` from `fetchBulbTypes`
+- **src/pages/Index.tsx** -- add a pre-filter in `handleGenerate` to only send types with valid data to the recommendation engine
 
