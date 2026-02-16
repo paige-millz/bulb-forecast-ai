@@ -33,11 +33,32 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Mode 2: Open-Meteo API sync
+    // Mode 2: Forecast (no DB write)
+    if (body.forecast) {
+      const { latitude, longitude } = body;
+      if (!latitude || !longitude) {
+        return new Response(
+          JSON.stringify({ error: "Provide latitude and longitude for forecast" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const fUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,temperature_2m_mean&temperature_unit=fahrenheit&forecast_days=16&timezone=America%2FNew_York`;
+      const fResp = await fetch(fUrl);
+      if (!fResp.ok) {
+        const text = await fResp.text();
+        throw new Error(`Open-Meteo forecast error [${fResp.status}]: ${text}`);
+      }
+      const fJson = await fResp.json();
+      return new Response(JSON.stringify(fJson), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Mode 3: Open-Meteo API sync (archive)
     const { latitude, longitude, startDate, endDate } = body;
     if (!latitude || !longitude || !startDate || !endDate) {
       return new Response(
-        JSON.stringify({ error: "Provide either 'rows' array or latitude/longitude/startDate/endDate" }),
+        JSON.stringify({ error: "Provide either 'rows' array, forecast:true, or latitude/longitude/startDate/endDate" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
