@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import type { EdgeFunctionResponse } from "@/lib/bulb-utils";
 
 interface RecommendationsTableProps {
-  data: EdgeFunctionResponse;
+  data: EdgeFunctionResponse | EdgeFunctionResponse[];
 }
 
 const confidenceBadge: Record<string, string> = {
@@ -16,6 +16,8 @@ const confidenceBadge: Record<string, string> = {
 };
 
 export function RecommendationsTable({ data }: RecommendationsTableProps) {
+  const rows = Array.isArray(data) ? data : [data];
+
   return (
     <Card className="shadow-sm">
       <CardHeader className="pb-3">
@@ -37,20 +39,22 @@ export function RecommendationsTable({ data }: RecommendationsTableProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow>
-                <TableCell className="font-semibold">{data.bulbType}</TableCell>
-                <TableCell>{data.easterDate}</TableCell>
-                <TableCell>{data.medianDBE} days</TableCell>
-                <TableCell>{data.iqr}</TableCell>
-                <TableCell className="font-bold text-primary">{data.recommendedRemovalDate}</TableCell>
-                <TableCell className="text-sm">{data.recommendedWindow.start} → {data.recommendedWindow.end}</TableCell>
-                <TableCell>{data.nRecords}</TableCell>
-                <TableCell>
-                  <Badge variant="outline" className={confidenceBadge[data.confidence] ?? ""}>
-                    {data.confidence}
-                  </Badge>
-                </TableCell>
-              </TableRow>
+              {rows.map((r) => (
+                <TableRow key={r.bulbType}>
+                  <TableCell className="font-semibold">{r.bulbType}</TableCell>
+                  <TableCell>{r.easterDate}</TableCell>
+                  <TableCell>{r.medianDBE} days</TableCell>
+                  <TableCell>{r.iqr}</TableCell>
+                  <TableCell className="font-bold text-primary">{r.recommendedRemovalDate}</TableCell>
+                  <TableCell className="text-sm">{r.recommendedWindow.start} → {r.recommendedWindow.end}</TableCell>
+                  <TableCell>{r.nRecords}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={confidenceBadge[r.confidence] ?? ""}>
+                      {r.confidence}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </div>
