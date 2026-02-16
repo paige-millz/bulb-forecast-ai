@@ -66,10 +66,7 @@ export function ExcelUpload({ onUploadComplete }: ExcelUploadProps) {
         (r) =>
           r.year > 0 &&
           r.bulb_type &&
-          r.easter_date &&
-          (r.removal_date || r.dbe) &&
-          !/^(additional|notes)/i.test(r.bulb_type.trim()) &&
-          !/^\d{4}\s+\w/.test(r.bulb_type.trim())
+          r.easter_date
       );
       const skipped = records.length - valid.length;
       if (skipped > 0) {

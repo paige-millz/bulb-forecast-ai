@@ -83,9 +83,22 @@ const Index = () => {
     setResults([]);
     try {
       if (selectedBulb === "All" && bulbTypes.length > 0) {
-        // Generate per-bulb-type recommendations
+        // Only process bulb types that have valid removal data
+        const { data: validTypesData } = await supabase
+          .from("bulb_records")
+          .select("bulb_type")
+          .not("removal_date", "is", null);
+        const validTypeSet = new Set(validTypesData?.map(r => r.bulb_type) || []);
+        const typesToProcess = bulbTypes.filter(bt => validTypeSet.has(bt));
+
+        if (typesToProcess.length === 0) {
+          toast({ title: "No valid data", description: "No bulb types have removal dates for recommendations.", variant: "destructive" });
+          setGenerating(false);
+          return;
+        }
+
         const allResults = await Promise.all(
-          bulbTypes.map((bt) => callBulbRecommendations(targetYear, bt))
+          typesToProcess.map((bt) => callBulbRecommendations(targetYear, bt))
         );
         const valid = allResults.filter((r) => !r.error);
         if (valid.length === 0) {
