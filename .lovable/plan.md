@@ -1,62 +1,65 @@
 
 
-# Easter Week Summary Card and CSV Export
+# Fix: Clean Up Junk Bulb Records and Prevent Future Bad Imports
 
-## Overview
+## Problem
+The database contains non-data rows imported from the CSV (grower notes, chemical application notes, "Additional Notes:" headers). When "All Types" is selected, the recommendation engine tries to process each one, generating misleading warnings.
 
-Add a summary comparison card showing the predicted Easter week average temperature versus historical Easter week averages, and add a CSV export button for weather data.
+Affected junk entries:
+- "Additional Notes:"
+- "2025 bonzi tulips 20 ppm drench 3-4 days out"
+- "2025 florel drench hyac 500 ppm =3 gal florel 2 gal water 2x"
+- "tulip ovals early" (has no removal dates or DBE in any year)
 
-## Changes
+## Solution (3 parts)
 
-### `src/pages/Weather.tsx`
+### 1. Clean existing database
+Run a migration to delete all bulb_records rows that have no `removal_date` AND no `dbe` value, since these are not actionable data.
 
-**1. Easter Week Summary Card** (placed between the forecast chart and historical chart)
+### 2. Harden the CSV import filter
+Update `ExcelUpload.tsx` to add stricter validation:
+- Keep the existing filter (must have `removal_date` or `dbe`)
+- Add a check that `bulb_type` does not look like a notes/comment row (e.g., starts with a year like "2025 ..." or contains "Notes:" as a substring)
 
-- Compute the "Easter week" as Easter Sunday +/- 3 days (7-day window)
-- **Forecast Easter week avg**: Average the forecast `tavg` values for dates falling within the Easter week window. Show "N/A" if Easter is outside the forecast range.
-- **Historical Easter week avgs**: For each year in the historical data, compute Easter date via `computeEasterDate(year)`, find the 7-day window around it, average `tavg_f` for those dates. Display as a small table or list showing each year's Easter week avg.
-- **Overall historical mean**: Average of all years' Easter week averages, displayed prominently for quick comparison.
-- Visual indicators: color the forecast value green/red/neutral depending on whether it's warmer or cooler than the historical mean.
-
-Card layout:
-```text
-+--------------------------------------------------+
-| Easter Week Temperature Comparison               |
-|                                                  |
-|  Forecast (2026):  48.2 F   [arrow up, green]    |
-|  Historical Avg:   44.7 F   (across 12 years)    |
-|                                                  |
-|  Year   Easter Date   Avg Temp                   |
-|  2024   Mar 31        46.1 F                     |
-|  2023   Apr 9         42.3 F                     |
-|  ...                                             |
-+--------------------------------------------------+
-```
-
-**2. CSV Export Button**
-
-- Add a "Download CSV" button to each card's header area (using the `Download` icon from lucide-react)
-- **Forecast CSV**: Exports the 16-day forecast data (date, avg, min, max)
-- **Historical CSV**: Exports the full historical weather data from the database (date, tavg_f, tmin_f, tmax_f)
-- Reuse the existing `downloadFile` utility from `bulb-utils.ts`
+### 3. Filter junk in the "All Types" generation flow
+Update `Index.tsx` so that when generating recommendations for "All Types", only bulb types that have at least one record with a valid `removal_date` or `dbe` are included. This prevents the engine from even attempting to process note-like entries.
 
 ## Technical Details
 
-### Easter Week Computation (new `useMemo` block)
-
-```typescript
-// For each historical year, compute Easter, find weather records within +/- 3 days
-// For forecast, filter forecastData to the same Easter week window
-// Return: { forecastAvg, historicalByYear: [{year, easterDate, avg}], overallHistoricalAvg }
+**Database cleanup SQL:**
+```sql
+DELETE FROM bulb_records
+WHERE removal_date IS NULL AND dbe IS NULL;
 ```
 
-### CSV Export Functions
+**ExcelUpload.tsx** -- enhance the `valid` filter (~line 65):
+```typescript
+const valid = records.filter(
+  (r) =>
+    r.year > 0 &&
+    r.bulb_type &&
+    r.easter_date &&
+    (r.removal_date || r.dbe) &&
+    !/^(additional|notes)/i.test(r.bulb_type.trim()) &&
+    !/^\d{4}\s+\w/.test(r.bulb_type.trim()) // skip "2025 bonzi..." style notes
+);
+```
 
-Two simple functions that convert the chart data arrays to CSV strings and trigger download via the existing `downloadFile` helper.
+**Index.tsx** -- filter bulb types before generating (~line 85):
+Query only bulb types that have at least one record with a non-null `removal_date` or `dbe`, so note-only entries are excluded from the "All" run. This can be done by fetching valid types from the database using a filtered query, or by filtering the `bulbTypes` list against a subquery.
 
-### New Imports
+**bulb-utils.ts** -- update `fetchBulbTypes` to only return types that have actual data:
+```typescript
+export async function fetchBulbTypes(): Promise<string[]> {
+  const { data } = await supabase
+    .from("bulb_records")
+    .select("bulb_type")
+    .not("removal_date", "is", null)
+    .order("bulb_type");
+  if (!data) return [];
+  return [...new Set(data.map((r) => r.bulb_type))];
+}
+```
 
-- `Download`, `TrendingUp`, `TrendingDown` from `lucide-react`
-- `downloadFile` from `@/lib/bulb-utils`
-- `CardDescription` from card component
+This is the most impactful single change -- it ensures only bulb types with real removal data appear in the dropdown and in "All Types" generation.
 
