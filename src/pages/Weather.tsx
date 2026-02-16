@@ -262,7 +262,7 @@ const Weather = () => {
               </Link>
             </Button>
             <div className="text-center flex-1">
-              <img src={bmfLogo} alt="Blue Mountain Farms" className="h-28 mx-auto" />
+              <img src={bmfLogo} alt="Blue Mountain Farms" className="h-72 mx-auto" />
               <p className="text-sm text-muted-foreground mt-1">Weather Insights</p>
             </div>
             <div className="w-20" />
