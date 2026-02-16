@@ -18,7 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { computeEasterDate, formatDate } from "@/lib/bulb-utils";
-import bmfLogo from "@/assets/bmf-logo.png";
+import bmfLogo from "@/assets/bmf-logo.svg";
 
 const YEAR_COLORS = [
   "hsl(224, 55%, 41%)",
@@ -191,9 +191,8 @@ const Weather = () => {
               </Link>
             </Button>
             <div className="text-center flex-1">
-              <img src={bmfLogo} alt="Blue Mountain Farms" className="h-52 mx-auto -my-6" />
-              <div className="w-16 h-px bg-primary/30 mx-auto mt-1 mb-1" />
-              <p className="text-sm text-muted-foreground">Weather Insights</p>
+              <img src={bmfLogo} alt="Blue Mountain Farms" className="h-28 mx-auto" />
+              <p className="text-sm text-muted-foreground mt-1">Weather Insights</p>
             </div>
             <div className="w-20" /> {/* spacer for centering */}
           </div>

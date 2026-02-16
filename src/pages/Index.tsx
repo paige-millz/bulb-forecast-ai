@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Loader2, Download, Trash2, AlertTriangle, CloudSun, ChevronDown } from "lucide-react";
-import bmfLogo from "@/assets/bmf-logo.png";
+import bmfLogo from "@/assets/bmf-logo.svg";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -129,9 +129,8 @@ const Index = () => {
         <div className="container max-w-6xl py-1">
           <div className="flex items-center justify-between">
             <div className="text-center flex-1">
-              <img src={bmfLogo} alt="Blue Mountain Farms" className="h-52 mx-auto -my-6" />
-              <div className="w-16 h-px bg-primary/30 mx-auto mt-1 mb-1" />
-              <p className="text-sm text-muted-foreground">Easter Bulb Removal Planner</p>
+              <img src={bmfLogo} alt="Blue Mountain Farms" className="h-28 mx-auto" />
+              <p className="text-sm text-muted-foreground mt-1">Easter Bulb Removal Planner</p>
             </div>
             <div className="flex items-center gap-2 absolute right-8">
               <Button variant="outline" size="sm" asChild>
