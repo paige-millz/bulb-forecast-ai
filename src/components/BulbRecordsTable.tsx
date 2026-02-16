@@ -32,7 +32,7 @@ interface BulbRow {
   grower_notes: string | null;
 }
 
-type EditableField = "year" | "bulb_type" | "easter_date" | "removal_date" | "dbe" | "yield_notes" | "grower_notes";
+type EditableField = "year" | "bulb_type" | "easter_date" | "removal_date" | "dbe" | "yield_quality" | "yield_notes" | "grower_notes";
 
 interface EditState {
   id: string;
@@ -46,6 +46,7 @@ const emptyForm = {
   easter_date: "",
   removal_date: "",
   dbe: "",
+  yield_quality: "",
   yield_notes: "",
   grower_notes: "",
 };
@@ -134,6 +135,7 @@ export function BulbRecordsTable() {
       easter_date: form.easter_date,
       removal_date: form.removal_date || null,
       dbe: form.dbe ? Number(form.dbe) : null,
+      yield_quality: form.yield_quality || null,
       yield_notes: form.yield_notes || null,
       grower_notes: form.grower_notes || null,
     };
@@ -205,6 +207,10 @@ export function BulbRecordsTable() {
                 <Input type="number" value={form.dbe} onChange={(e) => setForm({ ...form, dbe: e.target.value })} />
               </div>
               <div>
+                <Label>Yield Quality</Label>
+                <Input value={form.yield_quality} onChange={(e) => setForm({ ...form, yield_quality: e.target.value })} placeholder="excellent, good, fair, poor" />
+              </div>
+              <div>
                 <Label>Yield Notes</Label>
                 <Input value={form.yield_notes} onChange={(e) => setForm({ ...form, yield_notes: e.target.value })} />
               </div>
@@ -234,6 +240,7 @@ export function BulbRecordsTable() {
                 <TableHead>DBE</TableHead>
                 <TableHead>Avg Temp °F</TableHead>
                 <TableHead>Deg Hrs &gt;40°F</TableHead>
+                <TableHead>Yield Quality</TableHead>
                 <TableHead>Yield Notes</TableHead>
                 <TableHead>Grower Notes</TableHead>
                 <TableHead className="w-10"></TableHead>
@@ -304,6 +311,17 @@ export function BulbRecordsTable() {
                   />
                   <TableCell>{r.avg_temp_from_removal_f ?? "—"}</TableCell>
                   <TableCell>{r.degree_hours_above_40f != null ? Math.round(r.degree_hours_above_40f) : "—"}</TableCell>
+                  <EditableCell
+                    value={r.yield_quality}
+                    isEditing={editing?.id === r.id && editing.field === "yield_quality"}
+                    editValue={editing?.id === r.id && editing.field === "yield_quality" ? editing.value : ""}
+                    onStartEdit={() => startEdit(r.id, "yield_quality", r.yield_quality)}
+                    onChangeValue={(v) => setEditing((prev) => prev ? { ...prev, value: v } : null)}
+                    onSave={saveEdit}
+                    onCancel={cancelEdit}
+                    onKeyDown={handleKeyDown}
+                    saving={saving}
+                  />
                   <EditableCell
                     value={r.yield_notes}
                     isEditing={editing?.id === r.id && editing.field === "yield_notes"}
