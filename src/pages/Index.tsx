@@ -34,6 +34,8 @@ import { KPIPanel } from "@/components/KPIPanel";
 import { RecommendationsTable } from "@/components/RecommendationsTable";
 import { DBEDistributionChart } from "@/components/DBEDistributionChart";
 import { BulbRecordsTable } from "@/components/BulbRecordsTable";
+import { RecommendationExplanation } from "@/components/RecommendationExplanation";
+import { GrowerChat } from "@/components/GrowerChat";
 import {
   computeEasterDate,
   formatDate,
@@ -284,6 +286,8 @@ const Index = () => {
           <>
             <RecommendationsTable data={results} />
 
+            <RecommendationExplanation results={results} />
+
             {results.length === 1 && (
               <DBEDistributionChart dbeValues={results[0].dbeValues} medianDBE={results[0].medianDBE} />
             )}
@@ -308,6 +312,8 @@ const Index = () => {
                 Export JSON
               </Button>
             </div>
+
+            <GrowerChat results={results} />
           </>
         )}
 
