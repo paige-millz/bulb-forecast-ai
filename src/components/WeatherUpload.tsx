@@ -22,8 +22,8 @@ interface WeatherRow {
 export function WeatherUpload({ onUploadComplete }: WeatherUploadProps) {
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [latitude, setLatitude] = useState("40.75");
-  const [longitude, setLongitude] = useState("-75.25");
+  const [latitude, setLatitude] = useState("40.6895");
+  const [longitude, setLongitude] = useState("-76.1245");
 
   const processFile = useCallback(async (file: File) => {
     setLoading(true);
