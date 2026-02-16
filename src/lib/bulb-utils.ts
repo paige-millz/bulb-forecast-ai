@@ -16,6 +16,36 @@ export interface BulbRecord {
   notes?: string | null;
 }
 
+export interface WeatherYearStats {
+  year: number;
+  avgTemp: number;
+  degreeHours: number;
+  days: number;
+}
+
+export interface WeatherCorrelation {
+  r: number;
+  slope: number;
+  intercept: number;
+  nPaired: number;
+  pairedData: { dbe: number; avgTemp: number; degreeHours: number; year: number }[];
+}
+
+export interface WeatherContext {
+  historicalAvgTemp: number | null;
+  historicalAvgDegreeHours: number | null;
+  yearsWithData: number;
+  yearStats: WeatherYearStats[];
+  currentYear: WeatherYearStats | null;
+  correlation: WeatherCorrelation | null;
+  gdhModel: {
+    targetGDH: number;
+    medianGDH: number;
+    projectedRemovalDate: string | null;
+    projectedDBE: number | null;
+  } | null;
+}
+
 export interface EdgeFunctionResponse {
   targetYear: number;
   easterDate: string;
@@ -30,6 +60,10 @@ export interface EdgeFunctionResponse {
   recommendedWindow: { start: string; end: string };
   dbeValues: number[];
   notes: string[];
+  weatherAdjusted: boolean;
+  weatherAdjustedDBE: number | null;
+  baselineDBE: number;
+  weatherContext: WeatherContext | null;
   error?: string;
 }
 
