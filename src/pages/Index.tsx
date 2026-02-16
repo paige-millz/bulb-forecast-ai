@@ -115,7 +115,7 @@ const Index = () => {
         <div className="container max-w-6xl py-6">
           <div className="flex items-center justify-between">
             <div className="text-center flex-1">
-              <img src={bmfLogo} alt="Blue Mountain Farms" className="h-32 mx-auto mb-3" />
+              <img src={bmfLogo} alt="Blue Mountain Farms" className="h-44 mx-auto mb-3" />
               <div className="w-16 h-px bg-primary/30 mx-auto mt-2 mb-2" />
               <p className="text-sm text-muted-foreground">Easter Bulb Removal Planner</p>
             </div>
