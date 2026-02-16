@@ -9,9 +9,9 @@ interface KPIPanelProps {
 }
 
 const confidenceColor: Record<string, string> = {
-  High: "bg-green-100 text-green-800 border-green-300",
-  Medium: "bg-yellow-100 text-yellow-800 border-yellow-300",
-  Low: "bg-red-100 text-red-800 border-red-300",
+  High: "bg-success/15 text-success border-success/30",
+  Medium: "bg-accent/15 text-accent border-accent/30",
+  Low: "bg-destructive/15 text-destructive border-destructive/30",
 };
 
 export function KPIPanel({ data, easterDate }: KPIPanelProps) {
@@ -45,13 +45,13 @@ export function KPIPanel({ data, easterDate }: KPIPanelProps) {
       )}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {items.map((item) => (
-          <Card key={item.label} className="animate-fade-in">
+          <Card key={item.label} className="border-t-2 border-t-primary/40 shadow-sm">
             <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <item.icon className="h-4 w-4 text-primary" />
-                <span className="text-xs font-medium text-muted-foreground">{item.label}</span>
+              <div className="flex items-center gap-2 mb-2">
+                <item.icon className="h-4 w-4 text-accent" />
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{item.label}</span>
               </div>
-              <p className={`text-sm font-semibold truncate ${item.highlight ? "text-primary" : ""}`}>
+              <p className={`text-lg font-bold truncate ${item.highlight ? "text-primary" : "text-foreground"}`}>
                 {item.value}
               </p>
             </CardContent>
