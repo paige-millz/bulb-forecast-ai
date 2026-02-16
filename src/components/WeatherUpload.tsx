@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { Upload, CloudSun, Loader2, RefreshCw } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { Upload, CloudSun, Loader2, RefreshCw, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,24 @@ export function WeatherUpload({ onUploadComplete }: WeatherUploadProps) {
   const [syncing, setSyncing] = useState(false);
   const [latitude, setLatitude] = useState("40.6895");
   const [longitude, setLongitude] = useState("-76.1245");
+  const [weatherStats, setWeatherStats] = useState<{ count: number; minDate: string; maxDate: string } | null>(null);
+
+  const fetchWeatherStats = useCallback(async () => {
+    const { count } = await supabase.from("weather_daily").select("*", { count: "exact", head: true });
+    if (!count || count === 0) {
+      setWeatherStats(null);
+      return;
+    }
+    const { data: minRow } = await supabase.from("weather_daily").select("date").order("date", { ascending: true }).limit(1).single();
+    const { data: maxRow } = await supabase.from("weather_daily").select("date").order("date", { ascending: false }).limit(1).single();
+    setWeatherStats({
+      count,
+      minDate: minRow?.date ?? "",
+      maxDate: maxRow?.date ?? "",
+    });
+  }, []);
+
+  useEffect(() => { fetchWeatherStats(); }, [fetchWeatherStats]);
 
   const processFile = useCallback(async (file: File) => {
     setLoading(true);
@@ -70,6 +88,7 @@ export function WeatherUpload({ onUploadComplete }: WeatherUploadProps) {
       if (data?.error) throw new Error(data.error);
 
       toast({ title: "Weather data uploaded", description: `${data?.daysImported ?? rows.length} days imported.` });
+      fetchWeatherStats();
       onUploadComplete();
     } catch (err: any) {
       toast({ title: "Upload error", description: err.message, variant: "destructive" });
@@ -103,6 +122,7 @@ export function WeatherUpload({ onUploadComplete }: WeatherUploadProps) {
       }
 
       toast({ title: "Weather sync complete", description: `${totalImported} days synced from Open-Meteo (2013–${currentYear}).` });
+      fetchWeatherStats();
       onUploadComplete();
     } catch (err: any) {
       toast({ title: "Sync error", description: err.message, variant: "destructive" });
@@ -120,6 +140,16 @@ export function WeatherUpload({ onUploadComplete }: WeatherUploadProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Weather data summary */}
+        {weatherStats && (
+          <div className="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm">
+            <Database className="h-4 w-4 text-primary" />
+            <span className="text-foreground">
+              <strong>{weatherStats.count.toLocaleString()}</strong> weather records &middot; {weatherStats.minDate} to {weatherStats.maxDate}
+            </span>
+          </div>
+        )}
+
         {/* CSV Upload */}
         <div>
           <p className="text-sm text-muted-foreground mb-2">
