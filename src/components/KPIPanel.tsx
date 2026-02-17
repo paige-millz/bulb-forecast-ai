@@ -19,6 +19,7 @@ export function KPIPanel({ data, easterDate }: KPIPanelProps) {
 
   const items = [
     { label: "Easter Date", icon: Calendar, value: data?.easterDate ?? easterDate ?? "—" },
+    { label: "Finish By", icon: CalendarCheck, value: data?.finishingDate ? `${data.finishingDate} (−${data.finishingDaysBefore}d)` : "—", highlight: true },
     { label: "Records Used", icon: Database, value: data ? String(data.nRecords) : "—" },
     { label: "Median DBE", icon: TrendingDown, value: data ? `${data.medianDBE} days` : "—" },
     {
