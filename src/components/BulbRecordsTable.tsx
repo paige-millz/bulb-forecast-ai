@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { downloadFile } from "@/lib/bulb-utils";
+import { downloadFile, getDefaultFinishingDaysBefore } from "@/lib/bulb-utils";
 
 interface BulbRow {
   id: string;
@@ -254,6 +254,7 @@ export function BulbRecordsTable() {
                 <TableHead>Year</TableHead>
                 <TableHead>Bulb Type</TableHead>
                 <TableHead>Easter</TableHead>
+                <TableHead>Finish By</TableHead>
                 <TableHead>Removal</TableHead>
                 <TableHead>DBE</TableHead>
                 <TableHead>Avg Temp °F</TableHead>
@@ -303,6 +304,15 @@ export function BulbRecordsTable() {
                     saving={saving}
                     inputType="date"
                   />
+                  <TableCell className="text-sm text-accent">
+                    {(() => {
+                      if (!r.easter_date) return "—";
+                      const offset = getDefaultFinishingDaysBefore(r.bulb_type);
+                      const ed = new Date(r.easter_date + "T00:00:00");
+                      ed.setDate(ed.getDate() - offset);
+                      return ed.toISOString().split("T")[0];
+                    })()}
+                  </TableCell>
                   <EditableCell
                     value={r.removal_date}
                     isEditing={editing?.id === r.id && editing.field === "removal_date"}
