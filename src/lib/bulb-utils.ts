@@ -49,6 +49,8 @@ export interface WeatherContext {
 export interface EdgeFunctionResponse {
   targetYear: number;
   easterDate: string;
+  finishingDate: string;
+  finishingDaysBefore: number;
   bulbType: string;
   nRecords: number;
   medianDBE: number;
@@ -65,6 +67,13 @@ export interface EdgeFunctionResponse {
   baselineDBE: number;
   weatherContext: WeatherContext | null;
   error?: string;
+}
+
+// Returns the default finishing offset (days before Easter) for a bulb type
+export function getDefaultFinishingDaysBefore(bulbType: string): number {
+  const lower = bulbType.toLowerCase();
+  if (lower.includes("1/3") || lower.includes("oval")) return 10;
+  return 4;
 }
 
 // Easter calculation (Anonymous Gregorian algorithm)
@@ -128,8 +137,9 @@ export async function callBulbRecommendations(
   targetYear: number,
   bulbType: string
 ): Promise<EdgeFunctionResponse> {
+  const finishingDaysBefore = getDefaultFinishingDaysBefore(bulbType);
   const { data, error } = await supabase.functions.invoke("bulb-recommendations", {
-    body: { targetYear, bulbType },
+    body: { targetYear, bulbType, finishingDaysBefore },
   });
   if (error) throw error;
   return data as EdgeFunctionResponse;

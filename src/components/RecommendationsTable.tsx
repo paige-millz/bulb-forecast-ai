@@ -30,6 +30,7 @@ export function RecommendationsTable({ data }: RecommendationsTableProps) {
               <TableRow>
                 <TableHead>Bulb Type</TableHead>
                 <TableHead>Easter</TableHead>
+                <TableHead>Finish By</TableHead>
                 <TableHead>Median DBE</TableHead>
                 <TableHead>IQR</TableHead>
                 <TableHead>Removal Date</TableHead>
@@ -43,6 +44,7 @@ export function RecommendationsTable({ data }: RecommendationsTableProps) {
                 <TableRow key={r.bulbType}>
                   <TableCell className="font-semibold">{r.bulbType}</TableCell>
                   <TableCell>{r.easterDate}</TableCell>
+                  <TableCell className="font-medium text-accent">{r.finishingDate}</TableCell>
                   <TableCell>{r.medianDBE} days</TableCell>
                   <TableCell>{r.iqr}</TableCell>
                   <TableCell className="font-bold text-primary">{r.recommendedRemovalDate}</TableCell>

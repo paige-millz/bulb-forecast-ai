@@ -41,6 +41,7 @@ interface BulbResult {
   removalDate: Date;
   windowStart: Date;
   windowEnd: Date;
+  finishingDate: Date;
 }
 
 function daysInMonth(year: number, month: number): number {
@@ -102,6 +103,7 @@ const CalendarView = () => {
           removalDate: new Date(r.recommendedRemovalDate + "T00:00:00"),
           windowStart: new Date(r.recommendedWindow.start + "T00:00:00"),
           windowEnd: new Date(r.recommendedWindow.end + "T00:00:00"),
+          finishingDate: new Date(r.finishingDate + "T00:00:00"),
         }));
 
       setResults(mapped);
@@ -149,6 +151,11 @@ const CalendarView = () => {
   const getWindowsForDay = (dayNum: number) => {
     const date = new Date(viewYear, month, dayNum);
     return results.filter((r) => isInRange(date, r.windowStart, r.windowEnd));
+  };
+
+  const getFinishingForDay = (dayNum: number) => {
+    const date = new Date(viewYear, month, dayNum);
+    return results.filter((r) => isSameDay(date, r.finishingDate));
   };
 
   const dayBulbs = selectedDay ? results.filter((r) => isSameDay(selectedDay, r.removalDate)) : [];
@@ -235,8 +242,9 @@ const CalendarView = () => {
                     }
                     const bulbs = getBulbsForDay(dayNum);
                     const windows = getWindowsForDay(dayNum);
+                    const finishing = getFinishingForDay(dayNum);
                     const isEaster = isSameDay(new Date(viewYear, month, dayNum), easter);
-                    const hasContent = bulbs.length > 0 || windows.length > 0;
+                    const hasContent = bulbs.length > 0 || windows.length > 0 || finishing.length > 0;
 
                     // blend window colors
                     const windowBg = windows.length > 0
@@ -260,6 +268,15 @@ const CalendarView = () => {
                               {dayNum}
                             </span>
                             {isEaster && <span className="text-[9px] text-primary block leading-tight">Easter</span>}
+                            {/* Show finishing date markers */}
+                            {finishing.map((f, i) => (
+                              <div key={`fin-${i}`} className="flex items-center gap-1 mt-0.5">
+                                <span className="w-2 h-2 shrink-0 rotate-45 border border-current" style={{ borderColor: f.color, backgroundColor: `${f.color.replace(")", ", 0.2)")}` }} />
+                                <span className="text-[9px] sm:text-[10px] font-medium leading-tight truncate" style={{ color: f.color }}>
+                                  Finish
+                                </span>
+                              </div>
+                            ))}
                             {/* Show bulb type labels on removal dates */}
                             {bulbs.map((b, i) => (
                               <div key={`dot-${i}`} className="flex items-center gap-1 mt-0.5">
@@ -337,7 +354,7 @@ const CalendarView = () => {
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground mt-3">
                   <CalendarDays className="h-3.5 w-3.5" />
-                  <span>Shaded areas indicate the recommended removal window. Dots mark the recommended removal date.</span>
+                  <span>Shaded areas = removal window. ● = removal date. ◆ = finishing date.</span>
                 </div>
               </CardContent>
             </Card>

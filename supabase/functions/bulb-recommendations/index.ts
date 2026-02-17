@@ -103,7 +103,15 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { targetYear, bulbType } = await req.json();
+    const { targetYear, bulbType, finishingDaysBefore: finishingParam } = await req.json();
+
+    // Finishing offset: how many days before Easter the bulbs must be ready
+    function getDefaultFinishing(bt: string): number {
+      const lower = bt.toLowerCase();
+      if (lower.includes("1/3") || lower.includes("oval")) return 10;
+      return 4;
+    }
+    const finishingDaysBefore: number = finishingParam ?? getDefaultFinishing(bulbType);
 
     if (!targetYear || !bulbType) {
       return new Response(
@@ -116,9 +124,10 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // 1. Easter date for the target year
+    // 1. Easter date and finishing date for the target year
     const easter = computeEaster(targetYear);
     const easterDate = fmt(easter);
+    const finishingDate = fmt(addDays(easter, -finishingDaysBefore));
 
     // 2. Load bulb_records filtered by bulbType
     const notes: string[] = [];
@@ -185,11 +194,11 @@ Deno.serve(async (req) => {
     const p75DBE = weightedPercentile(weightedValues, 75);
     const iqr = Math.round((p75DBE - p25DBE) * 10) / 10;
 
-    // 6. Recommended timing from weighted median
+    // 6. Recommended timing from weighted median, shifted by finishing offset
     const roundedMedian = Math.round(medianDBE);
-    const recommendedDate = addDays(easter, -roundedMedian);
-    const windowStart = addDays(easter, -Math.round(p75DBE)); // earlier pull
-    const windowEnd = addDays(easter, -Math.round(p25DBE));   // later pull
+    const recommendedDate = addDays(easter, -(roundedMedian + finishingDaysBefore));
+    const windowStart = addDays(easter, -(Math.round(p75DBE) + finishingDaysBefore)); // earlier pull
+    const windowEnd = addDays(easter, -(Math.round(p25DBE) + finishingDaysBefore));   // later pull
 
     // 7. Confidence scoring
     let confidence: "High" | "Medium" | "Low";
@@ -388,13 +397,13 @@ Deno.serve(async (req) => {
                   gdhModel.projectedRemovalDate = fmt(projectedDate);
                   gdhModel.projectedDBE = projectedDBE;
 
-                  // Use GDH model as the primary weather adjustment
+                  // Use GDH model as the primary weather adjustment (shifted by finishing offset)
                   weatherAdjustedDBE = projectedDBE;
-                  weatherAdjustedDate = projectedDate;
+                  weatherAdjustedDate = addDays(easter, -(projectedDBE + finishingDaysBefore));
                   const halfIQR = Math.round(iqr / 2) || 1;
                   weatherAdjustedWindow = {
-                    start: addDays(easter, -(projectedDBE + halfIQR)),
-                    end: addDays(easter, -(projectedDBE - halfIQR)),
+                    start: addDays(easter, -(projectedDBE + halfIQR + finishingDaysBefore)),
+                    end: addDays(easter, -(projectedDBE - halfIQR + finishingDaysBefore)),
                   };
 
                   const diff = projectedDBE - roundedMedian;
@@ -451,11 +460,11 @@ Deno.serve(async (req) => {
             const predictedDBE = Math.round(slope * currentYearStats.avgTemp + intercept);
             if (predictedDBE > 0 && predictedDBE < 60) {
               weatherAdjustedDBE = predictedDBE;
-              weatherAdjustedDate = addDays(easter, -predictedDBE);
+              weatherAdjustedDate = addDays(easter, -(predictedDBE + finishingDaysBefore));
               const halfIQR = Math.round(iqr / 2) || 1;
               weatherAdjustedWindow = {
-                start: addDays(easter, -(predictedDBE + halfIQR)),
-                end: addDays(easter, -(predictedDBE - halfIQR)),
+                start: addDays(easter, -(predictedDBE + halfIQR + finishingDaysBefore)),
+                end: addDays(easter, -(predictedDBE - halfIQR + finishingDaysBefore)),
               };
               const diff = predictedDBE - roundedMedian;
               if (Math.abs(diff) >= 1) {
@@ -499,6 +508,8 @@ Deno.serve(async (req) => {
     const response = {
       targetYear,
       easterDate,
+      finishingDate,
+      finishingDaysBefore,
       bulbType,
       nRecords,
       medianDBE: Math.round(medianDBE * 10) / 10,
