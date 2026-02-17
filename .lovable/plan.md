@@ -1,46 +1,54 @@
 
-# Adjustable Finishing Days in Configuration
+
+# Adjustable Finish By Date — Per Bulb Type and Calendar Picker
 
 ## Overview
-Add a "Ship By (days before Easter)" input to the Configuration card so growers can override the default finishing offset before running a recommendation. The default auto-populates based on the selected bulb type (10 for 1/3/oval, 4 for others), and any change from the default shifts the recommendation accordingly.
 
-## How It Works
-- When bulb type selection changes, the finishing days input auto-fills with the default for that type (10 or 4)
-- The grower can manually adjust the number
-- When "All" is selected, the input is hidden (each type uses its own default)
-- If the grower changes the value, the delta from the default is applied to shift the recommendation
-- The value is passed through `callBulbRecommendations` to the edge function
+When running for **All** bulb types, the recommendation summary table already shows each type's assumed "Finish By" date. No input control is needed since each type uses its own default.
 
-## UI Changes
+When a **specific bulb type** is selected, the Configuration card will let the grower adjust the finishing target in two ways:
+1. Change the number of days before Easter (existing input, enhanced)
+2. Pick a specific date on a calendar — the system back-calculates the days-before-Easter value
 
-### Configuration Card (before the Generate button)
+Both inputs stay synced: changing the number updates the calendar, and picking a date updates the number.
+
+## UI Design
+
+```text
+Bulb Type: [2/3 Hyacinth]
+
+Ship By Target
+┌──────────────────────────────────────────────┐
+│  [4] days before Easter    — or —   [📅 2026-03-31]  │
+│  Default: 4 for this type                            │
+└──────────────────────────────────────────────┘
 ```
-Target Easter Year: [2026]    Bulb Type: [2/3 Hyacinth ▼]
-Easter: 2026-04-05            Ship By: [4] days before Easter
-                              (default: 4 for this type)
 
-[Generate Recommendation]
-```
-
-When "All" is selected, the Ship By input is hidden since each type uses its own default.
+When "All" is selected, these controls are hidden — each type uses its own default, and the Finish By column in the results table shows the assumed date per type (already working).
 
 ## Technical Details
 
 ### `src/pages/Index.tsx`
-- Add state: `finishingDays` (number | null) -- null means "use default"
-- When `selectedBulb` changes, auto-set `finishingDays` to the default for that type (or null for "All")
-- Show a number input labeled "Ship By (days before Easter)" when a specific bulb type is selected
-- Show the default value as helper text below
-- Pass `finishingDays` to `callBulbRecommendations`
-- When "All" is selected, pass `undefined` so each type uses its own default
 
-### `src/lib/bulb-utils.ts`
-- Update `callBulbRecommendations` signature to accept an optional `finishingDaysBefore` parameter
-- Pass it in the edge function request body (already supported by the edge function)
+1. Import `Calendar`, `Popover`, `PopoverTrigger`, `PopoverContent` from existing UI components, plus `format` from `date-fns` and `CalendarIcon` from `lucide-react`.
 
-### No edge function changes needed
-The edge function already accepts `finishingDaysBefore` as an optional parameter and computes the offset from the default.
+2. Add a computed `finishingDate` derived from `easter` minus `finishingDays`:
+   ```
+   const finishingDate = new Date(easter)
+   finishingDate.setDate(finishingDate.getDate() - finishingDays)
+   ```
+
+3. Replace the current single number input with a row containing:
+   - The number input (days before Easter) — already exists
+   - A date picker (Popover + Calendar) showing the computed finishing date
+   - When the user picks a date, calculate `diffDays(easter, selectedDate)` and set `finishingDays` to that value
+
+4. Both controls stay in sync via the shared `finishingDays` state.
+
+### No changes needed to:
+- `src/lib/bulb-utils.ts` — already accepts the override parameter
+- `supabase/functions/bulb-recommendations/index.ts` — already handles the finishing offset
+- `src/components/RecommendationsTable.tsx` — already displays `finishingDate` from the response
 
 ## Files Modified
-- `src/pages/Index.tsx` -- new state + input field + pass to generate
-- `src/lib/bulb-utils.ts` -- update `callBulbRecommendations` to accept optional finishing param
+- `src/pages/Index.tsx` — add date picker alongside the days input, keep them synced
