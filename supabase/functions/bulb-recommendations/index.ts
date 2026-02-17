@@ -103,7 +103,31 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { targetYear, bulbType, finishingDaysBefore: finishingParam } = await req.json();
+    const body = await req.json();
+
+    // Input validation
+    const targetYear = Number(body.targetYear);
+    const bulbType = typeof body.bulbType === "string" ? body.bulbType.trim().slice(0, 200) : "";
+    const finishingParam = body.finishingDaysBefore != null ? Number(body.finishingDaysBefore) : undefined;
+
+    if (!Number.isInteger(targetYear) || targetYear < 2000 || targetYear > 2100) {
+      return new Response(
+        JSON.stringify({ error: "targetYear must be an integer between 2000 and 2100" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (!bulbType || bulbType.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "bulbType is required and must be a non-empty string" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (finishingParam !== undefined && (!Number.isInteger(finishingParam) || finishingParam < 0 || finishingParam > 60)) {
+      return new Response(
+        JSON.stringify({ error: "finishingDaysBefore must be an integer between 0 and 60" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Finishing offset: how many days before Easter the bulbs must be ready
     function getDefaultFinishing(bt: string): number {

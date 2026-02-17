@@ -17,9 +17,23 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Input validation helpers
+    const isValidDate = (s: unknown): s is string =>
+      typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
+    const isValidCoord = (v: unknown, min: number, max: number): v is number =>
+      typeof v === "number" && !isNaN(v) && v >= min && v <= max;
+
     // Mode 1: CSV data upload
     if (body.rows && Array.isArray(body.rows)) {
-      const rows = body.rows;
+      if (body.rows.length > 10000) {
+        return new Response(
+          JSON.stringify({ error: "Maximum 10,000 rows per upload" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const rows = body.rows.filter((r: any) =>
+        isValidDate(r.date) && typeof r.tavg_f === "number" && !isNaN(r.tavg_f)
+      );
       let imported = 0;
       for (let i = 0; i < rows.length; i += 500) {
         const chunk = rows.slice(i, i + 500);
@@ -36,9 +50,9 @@ Deno.serve(async (req) => {
     // Mode 2: Forecast (no DB write)
     if (body.forecast) {
       const { latitude, longitude } = body;
-      if (!latitude || !longitude) {
+      if (!isValidCoord(latitude, -90, 90) || !isValidCoord(longitude, -180, 180)) {
         return new Response(
-          JSON.stringify({ error: "Provide latitude and longitude for forecast" }),
+          JSON.stringify({ error: "Provide valid latitude (-90 to 90) and longitude (-180 to 180) for forecast" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -56,9 +70,9 @@ Deno.serve(async (req) => {
 
     // Mode 3: Open-Meteo API sync (archive)
     const { latitude, longitude, startDate, endDate } = body;
-    if (!latitude || !longitude || !startDate || !endDate) {
+    if (!isValidCoord(latitude, -90, 90) || !isValidCoord(longitude, -180, 180) || !isValidDate(startDate) || !isValidDate(endDate)) {
       return new Response(
-        JSON.stringify({ error: "Provide either 'rows' array, forecast:true, or latitude/longitude/startDate/endDate" }),
+        JSON.stringify({ error: "Provide valid latitude, longitude, startDate (YYYY-MM-DD), and endDate (YYYY-MM-DD)" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
