@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { Loader2, Download, Trash2, AlertTriangle, CloudSun, CalendarDays, ChevronDown, CalendarIcon } from "lucide-react";
+import { Loader2, Download, Trash2, AlertTriangle, CloudSun, CalendarDays, ChevronDown, CalendarIcon, LogOut } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import bmfLogo from "@/assets/bmf-logo.svg";
 import { Button } from "@/components/ui/button";
@@ -61,6 +62,7 @@ function getNextEasterYear(): number {
 }
 
 const Index = () => {
+  const { signOut } = useAuth();
   const [targetYear, setTargetYear] = useState(getNextEasterYear());
   const [bulbTypes, setBulbTypes] = useState<string[]>([]);
   const [selectedBulb, setSelectedBulb] = useState("All");
@@ -174,6 +176,10 @@ const Index = () => {
                   <CalendarDays className="h-4 w-4" />
                   Calendar
                 </Link>
+              </Button>
+              <Button variant="ghost" size="sm" onClick={signOut} className="gap-1 text-muted-foreground">
+                <LogOut className="h-4 w-4" />
+                Sign Out
               </Button>
             </div>
           </div>
