@@ -46,6 +46,7 @@ import {
   exportCSV,
   exportJSON,
   downloadFile,
+  getDefaultFinishingDaysBefore,
   type EdgeFunctionResponse,
 } from "@/lib/bulb-utils";
 
@@ -59,10 +60,20 @@ const Index = () => {
   const [targetYear, setTargetYear] = useState(getNextEasterYear());
   const [bulbTypes, setBulbTypes] = useState<string[]>([]);
   const [selectedBulb, setSelectedBulb] = useState("All");
+  const [finishingDays, setFinishingDays] = useState<number | null>(null);
   const [bulbCount, setBulbCount] = useState(0);
   const [generating, setGenerating] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [results, setResults] = useState<EdgeFunctionResponse[]>([]);
+
+  // Auto-set finishing days when bulb type changes
+  useEffect(() => {
+    if (selectedBulb === "All") {
+      setFinishingDays(null);
+    } else {
+      setFinishingDays(getDefaultFinishingDaysBefore(selectedBulb));
+    }
+  }, [selectedBulb]);
 
   const easter = computeEasterDate(targetYear);
   const easterStr = formatDate(easter);
@@ -100,7 +111,7 @@ const Index = () => {
         }
 
         const allResults = await Promise.all(
-          typesToProcess.map((bt) => callBulbRecommendations(targetYear, bt))
+          typesToProcess.map((bt) => callBulbRecommendations(targetYear, bt, undefined))
         );
         const valid = allResults.filter((r) => !r.error);
         if (valid.length === 0) {
@@ -109,7 +120,7 @@ const Index = () => {
           setResults(valid);
         }
       } else {
-        const resp = await callBulbRecommendations(targetYear, selectedBulb);
+        const resp = await callBulbRecommendations(targetYear, selectedBulb, finishingDays ?? undefined);
         if (resp.error) {
           toast({ title: "Error", description: resp.error, variant: "destructive" });
         } else {
@@ -220,6 +231,23 @@ const Index = () => {
                 </Select>
               </div>
             </div>
+
+            {selectedBulb !== "All" && finishingDays !== null && (
+              <div>
+                <Label htmlFor="finishing-days">Ship By (days before Easter)</Label>
+                <Input
+                  id="finishing-days"
+                  type="number"
+                  value={finishingDays}
+                  onChange={(e) => setFinishingDays(Number(e.target.value))}
+                  min={0}
+                  max={60}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Default: {getDefaultFinishingDaysBefore(selectedBulb)} for this type
+                </p>
+              </div>
+            )}
 
             <Button onClick={handleGenerate} disabled={generating || bulbTypes.length === 0} className="w-full">
               {generating ? (
