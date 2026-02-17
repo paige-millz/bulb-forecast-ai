@@ -1,55 +1,31 @@
+# Remove Finishing Offset from Removal Date Calculations
 
+## What Changes
 
-# Finishing Date Adjustment by Bulb Type
+The finishing date is informational only -- it tells the grower when bulbs must be ready. The actual removal date recommendation stays based purely on historical DBE relative to Easter, with no shifting.
 
-## Overview
-Add a "finishing date" concept where bulbs must be ready a certain number of days before Easter. Since historical DBE values are measured relative to Easter day, the system shifts recommended removal dates earlier by the finishing offset.
+But moving forward... if the finish by date changes from the default 10 days and 4 days based on bulb type then the recommendation should shift accordingly. 
 
-## Logic
+## Technical Details
 
-| Bulb Type | Finishing Offset | Effect on Removal Date |
-|-----------|-----------------|----------------------|
-| Contains "1/3" | 10 days before Easter | Shift removal 10 days earlier (DBE + 10) |
-| Contains "oval" | 10 days before Easter | Shift removal 10 days earlier (DBE + 10) |
-| All others (2/3s, etc.) | 4 days before Easter | Shift removal 4 days earlier (DBE + 4) |
+### `supabase/functions/bulb-recommendations/index.ts`
 
-**Formula**: `adjustedRemovalDate = Easter - (DBE + finishingOffset)`
-**Finishing Date**: `Easter - finishingOffset`
+Remove `+ finishingDaysBefore` from all date calculations:
 
-## Changes
+- Line 199: `recommendedDate = addDays(easter, -roundedMedian)` (remove `+ finishingDaysBefore`)
+- Line 200: `windowStart = addDays(easter, -Math.round(p75DBE))` (remove `+ finishingDaysBefore`)
+- Line 201: `windowEnd = addDays(easter, -Math.round(p25DBE))` (remove `+ finishingDaysBefore`)
+- Line 402: GDH weather-adjusted date: `addDays(easter, -projectedDBE)` (remove `+ finishingDaysBefore`)
+- Lines 405-406: GDH weather-adjusted window: remove `+ finishingDaysBefore`
+- Line 463: Regression weather-adjusted date: remove `+ finishingDaysBefore`
+- Lines 465-467: Regression weather-adjusted window: remove `+ finishingDaysBefore`
 
-### 1. `src/lib/bulb-utils.ts`
-- Add `getDefaultFinishingDaysBefore(bulbType: string): number` helper (returns 10 for 1/3/oval, 4 for others)
-- Add `finishingDate` and `finishingDaysBefore` to `EdgeFunctionResponse` interface
-- Update `callBulbRecommendations` to pass `finishingDaysBefore` to the edge function
+The `finishingDate` and `finishingDaysBefore` fields remain in the response as informational context. The grower can still adjust the finishing days parameter -- it just affects the displayed finishing date, not the removal recommendation.
 
-### 2. `supabase/functions/bulb-recommendations/index.ts`
-- Accept optional `finishingDaysBefore` parameter (auto-detect from bulb type if not provided)
-- Add `getDefaultFinishing(bulbType)` function mirroring frontend logic
-- Compute `finishingDate = Easter - finishingDaysBefore`
-- Shift all dates earlier by `finishingDaysBefore`:
-  - `recommendedRemovalDate = Easter - (roundedMedian + finishingDaysBefore)`
-  - Window start/end shifted similarly
-  - Weather-adjusted dates shifted similarly
-- Include `finishingDate` and `finishingDaysBefore` in response
+### No other file changes needed
 
-### 3. `src/components/RecommendationsTable.tsx`
-- Add "Finish By" column between "Easter" and "Median DBE"
-- Display the finishing date for each bulb type
-
-### 4. `src/components/KPIPanel.tsx`
-- Add "Finish By Date" KPI card (displayed when single bulb type selected)
-
-### 5. `src/pages/CalendarView.tsx`
-- Mark finishing dates on calendar with a distinct indicator (e.g., diamond or outlined dot) alongside the removal date markers
-
-### 6. `src/pages/Index.tsx`
-- No changes needed beyond what flows through the updated response type
+The UI components (RecommendationsTable, KPIPanel, CalendarView) already display finishing date separately from removal date, so they work correctly as-is.
 
 ## Files Modified
-- `src/lib/bulb-utils.ts` -- helper + type updates
-- `supabase/functions/bulb-recommendations/index.ts` -- core logic shift
-- `src/components/RecommendationsTable.tsx` -- new column
-- `src/components/KPIPanel.tsx` -- new card
-- `src/pages/CalendarView.tsx` -- finishing date markers
 
+- `supabase/functions/bulb-recommendations/index.ts` -- remove finishing offset from all removal date math
