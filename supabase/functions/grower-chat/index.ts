@@ -12,7 +12,24 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, recommendationContext } = await req.json();
+    const body = await req.json();
+
+    // Input validation
+    if (!Array.isArray(body.messages) || body.messages.length === 0 || body.messages.length > 50) {
+      return new Response(
+        JSON.stringify({ error: "messages must be an array with 1-50 items" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const messages = body.messages.map((m: any) => {
+      const role = m.role === "assistant" ? "assistant" : "user";
+      const content = typeof m.content === "string" ? m.content.slice(0, 5000) : "";
+      return { role, content };
+    });
+    const recommendationContext = Array.isArray(body.recommendationContext)
+      ? body.recommendationContext.slice(0, 100)
+      : [];
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
