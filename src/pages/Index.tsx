@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { Loader2, Download, Trash2, AlertTriangle, CloudSun, CalendarDays, ChevronDown } from "lucide-react";
+import { Loader2, Download, Trash2, AlertTriangle, CloudSun, CalendarDays, ChevronDown, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
 import bmfLogo from "@/assets/bmf-logo.svg";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +30,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "@/hooks/use-toast";
 import { ExcelUpload } from "@/components/ExcelUpload";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { WeatherUpload } from "@/components/WeatherUpload";
 import { KPIPanel } from "@/components/KPIPanel";
 import { RecommendationsTable } from "@/components/RecommendationsTable";
@@ -232,22 +236,60 @@ const Index = () => {
               </div>
             </div>
 
-            {selectedBulb !== "All" && finishingDays !== null && (
-              <div>
-                <Label htmlFor="finishing-days">Ship By (days before Easter)</Label>
-                <Input
-                  id="finishing-days"
-                  type="number"
-                  value={finishingDays}
-                  onChange={(e) => setFinishingDays(Number(e.target.value))}
-                  min={0}
-                  max={60}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Default: {getDefaultFinishingDaysBefore(selectedBulb)} for this type
-                </p>
-              </div>
-            )}
+            {selectedBulb !== "All" && finishingDays !== null && (() => {
+              const finishingDate = new Date(easter);
+              finishingDate.setDate(finishingDate.getDate() - finishingDays);
+              return (
+                <div>
+                  <Label>Ship By Target</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input
+                      id="finishing-days"
+                      type="number"
+                      value={finishingDays}
+                      onChange={(e) => setFinishingDays(Number(e.target.value))}
+                      min={0}
+                      max={60}
+                      className="w-24"
+                    />
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">days before Easter</span>
+                    <span className="text-sm text-muted-foreground">— or —</span>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-[160px] justify-start text-left font-normal",
+                            !finishingDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {format(finishingDate, "MMM d, yyyy")}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={finishingDate}
+                          onSelect={(date) => {
+                            if (date) {
+                              const diffTime = easter.getTime() - date.getTime();
+                              const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+                              setFinishingDays(Math.max(0, diffDays));
+                            }
+                          }}
+                          initialFocus
+                          className={cn("p-3 pointer-events-auto")}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Default: {getDefaultFinishingDaysBefore(selectedBulb)} for this type
+                  </p>
+                </div>
+              );
+            })()}
 
             <Button onClick={handleGenerate} disabled={generating || bulbTypes.length === 0} className="w-full">
               {generating ? (
