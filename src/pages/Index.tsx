@@ -271,6 +271,7 @@ const Index = () => {
                         <Calendar
                           mode="single"
                           selected={finishingDate}
+                          defaultMonth={finishingDate}
                           onSelect={(date) => {
                             if (date) {
                               const diffTime = easter.getTime() - date.getTime();
