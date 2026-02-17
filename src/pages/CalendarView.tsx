@@ -103,7 +103,7 @@ const CalendarView = () => {
           removalDate: new Date(r.recommendedRemovalDate + "T00:00:00"),
           windowStart: new Date(r.recommendedWindow.start + "T00:00:00"),
           windowEnd: new Date(r.recommendedWindow.end + "T00:00:00"),
-          finishingDate: new Date(r.finishingDate + "T00:00:00"),
+          finishingDate: r.finishingDate ? new Date(r.finishingDate + "T00:00:00") : new Date(r.recommendedRemovalDate + "T00:00:00"),
         }));
 
       setResults(mapped);
