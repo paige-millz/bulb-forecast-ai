@@ -111,7 +111,10 @@ Deno.serve(async (req) => {
       if (lower.includes("1/3") || lower.includes("oval")) return 10;
       return 4;
     }
-    const finishingDaysBefore: number = finishingParam ?? getDefaultFinishing(bulbType);
+    const defaultFinishing = getDefaultFinishing(bulbType);
+    const finishingDaysBefore: number = finishingParam ?? defaultFinishing;
+    // Only shift removal dates when the user overrides the default finishing offset
+    const finishingOffset = finishingDaysBefore - defaultFinishing;
 
     if (!targetYear || !bulbType) {
       return new Response(
@@ -196,9 +199,9 @@ Deno.serve(async (req) => {
 
     // 6. Recommended timing from weighted median, shifted by finishing offset
     const roundedMedian = Math.round(medianDBE);
-    const recommendedDate = addDays(easter, -(roundedMedian + finishingDaysBefore));
-    const windowStart = addDays(easter, -(Math.round(p75DBE) + finishingDaysBefore)); // earlier pull
-    const windowEnd = addDays(easter, -(Math.round(p25DBE) + finishingDaysBefore));   // later pull
+    const recommendedDate = addDays(easter, -(roundedMedian + finishingOffset));
+    const windowStart = addDays(easter, -(Math.round(p75DBE) + finishingOffset)); // earlier pull
+    const windowEnd = addDays(easter, -(Math.round(p25DBE) + finishingOffset));   // later pull
 
     // 7. Confidence scoring
     let confidence: "High" | "Medium" | "Low";
@@ -399,11 +402,11 @@ Deno.serve(async (req) => {
 
                   // Use GDH model as the primary weather adjustment (shifted by finishing offset)
                   weatherAdjustedDBE = projectedDBE;
-                  weatherAdjustedDate = addDays(easter, -(projectedDBE + finishingDaysBefore));
+                  weatherAdjustedDate = addDays(easter, -(projectedDBE + finishingOffset));
                   const halfIQR = Math.round(iqr / 2) || 1;
                   weatherAdjustedWindow = {
-                    start: addDays(easter, -(projectedDBE + halfIQR + finishingDaysBefore)),
-                    end: addDays(easter, -(projectedDBE - halfIQR + finishingDaysBefore)),
+                    start: addDays(easter, -(projectedDBE + halfIQR + finishingOffset)),
+                    end: addDays(easter, -(projectedDBE - halfIQR + finishingOffset)),
                   };
 
                   const diff = projectedDBE - roundedMedian;
@@ -460,11 +463,11 @@ Deno.serve(async (req) => {
             const predictedDBE = Math.round(slope * currentYearStats.avgTemp + intercept);
             if (predictedDBE > 0 && predictedDBE < 60) {
               weatherAdjustedDBE = predictedDBE;
-              weatherAdjustedDate = addDays(easter, -(predictedDBE + finishingDaysBefore));
+              weatherAdjustedDate = addDays(easter, -(predictedDBE + finishingOffset));
               const halfIQR = Math.round(iqr / 2) || 1;
               weatherAdjustedWindow = {
-                start: addDays(easter, -(predictedDBE + halfIQR + finishingDaysBefore)),
-                end: addDays(easter, -(predictedDBE - halfIQR + finishingDaysBefore)),
+                start: addDays(easter, -(predictedDBE + halfIQR + finishingOffset)),
+                end: addDays(easter, -(predictedDBE - halfIQR + finishingOffset)),
               };
               const diff = predictedDBE - roundedMedian;
               if (Math.abs(diff) >= 1) {
