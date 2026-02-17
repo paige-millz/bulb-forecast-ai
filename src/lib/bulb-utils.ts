@@ -135,9 +135,10 @@ export async function clearAllBulbRecords() {
 
 export async function callBulbRecommendations(
   targetYear: number,
-  bulbType: string
+  bulbType: string,
+  finishingDaysBeforeOverride?: number
 ): Promise<EdgeFunctionResponse> {
-  const finishingDaysBefore = getDefaultFinishingDaysBefore(bulbType);
+  const finishingDaysBefore = finishingDaysBeforeOverride ?? getDefaultFinishingDaysBefore(bulbType);
   const { data, error } = await supabase.functions.invoke("bulb-recommendations", {
     body: { targetYear, bulbType, finishingDaysBefore },
   });
