@@ -35,9 +35,10 @@ export function ExcelUpload({ onUploadComplete }: ExcelUploadProps) {
         const easter_date = parseExcelDate(easter_raw);
         const removal_date = parseExcelDate(removal_raw) || null;
 
-        let dbe = Number(row["DBE"] ?? row["dbe"] ?? 0) || null;
-        if (!dbe && easter_date && removal_date) {
-          dbe = diffDays(new Date(easter_date), new Date(removal_date));
+        const dbeRaw = row["DBE"] ?? row["dbe"];
+        let dbe: number | null = dbeRaw != null && dbeRaw !== "" ? Number(dbeRaw) : null;
+        if (dbe == null && easter_date && removal_date) {
+          dbe = diffDays(new Date(easter_date + "T00:00:00"), new Date(removal_date + "T00:00:00"));
         }
 
         const ship_raw = row["Ship Date"] ?? row["ship_date"];

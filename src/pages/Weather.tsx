@@ -308,8 +308,8 @@ const Weather = () => {
                     <YAxis unit="°F" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
                     <Tooltip
                       contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
-                      formatter={(value: number, name: string) => [
-                        `${value?.toFixed(1)}°F`,
+                      formatter={(value: number | null, name: string) => [
+                        value != null ? `${value.toFixed(1)}°F` : "—",
                         name === "tavg" ? "Avg" : name === "tmin" ? "Min" : "Max",
                       ]}
                       labelFormatter={(label) => label}
@@ -454,8 +454,8 @@ const Weather = () => {
                     <YAxis unit="°F" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
                     <Tooltip
                       contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
-                      formatter={(value: number, name: string) => [
-                        `${value?.toFixed(1)}°F`,
+                      formatter={(value: number | null, name: string) => [
+                        value != null ? `${value.toFixed(1)}°F` : "—",
                         name.replace("y", ""),
                       ]}
                       labelFormatter={(label) => label}
