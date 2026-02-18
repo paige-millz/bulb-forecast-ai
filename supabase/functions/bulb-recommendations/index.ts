@@ -89,8 +89,8 @@ function yieldWeight(quality: string | null | undefined): number {
 function extractDBE(rec: any): number | null {
   if (rec.dbe && Number(rec.dbe) > 0) return Number(rec.dbe);
   if (rec.easter_date && rec.removal_date) {
-    const ed = new Date(rec.easter_date);
-    const rd = new Date(rec.removal_date);
+    const ed = new Date(rec.easter_date + "T00:00:00");
+    const rd = new Date(rec.removal_date + "T00:00:00");
     const diff = Math.round((ed.getTime() - rd.getTime()) / 86400000);
     return diff > 0 ? diff : null;
   }
@@ -261,10 +261,10 @@ Deno.serve(async (req) => {
           let avgTemp: number | null = null;
 
           // Try weather_daily for this record's actual window
-          const removalDate = new Date(rec.removalDate);
-          const easterDateRec = new Date(rec.easterDate);
+          const removalDate = new Date(rec.removalDate + "T00:00:00");
+          const easterDateRec = new Date(rec.easterDate + "T00:00:00");
           const windowDays = weatherData.filter((w) => {
-            const wd = new Date(w.date);
+            const wd = new Date(w.date + "T00:00:00");
             return wd >= removalDate && wd <= easterDateRec;
           });
 
@@ -295,13 +295,13 @@ Deno.serve(async (req) => {
         // that is [roundedMedian days before that year's Easter] to
         // [that year's Easter]. This correctly handles Easter shifting.
         const yearStats: { year: number; avgTemp: number; degreeHours: number; days: number }[] = [];
-        const yearsInWeather = [...new Set(weatherData.map((w) => new Date(w.date).getFullYear()))];
+        const yearsInWeather = [...new Set(weatherData.map((w) => new Date(w.date + "T00:00:00").getFullYear()))];
 
         for (const yr of yearsInWeather) {
           const yrEaster = computeEaster(yr);
           const yrWindowStart = addDays(yrEaster, -roundedMedian);
           const days = weatherData.filter((w) => {
-            const wd = new Date(w.date);
+            const wd = new Date(w.date + "T00:00:00");
             return wd >= yrWindowStart && wd <= yrEaster;
           });
           if (days.length < 5) continue;
@@ -363,10 +363,10 @@ Deno.serve(async (req) => {
             // Get daily weather for the target year, sorted descending from Easter
             const targetYearDays = weatherData
               .filter((w) => {
-                const wd = new Date(w.date);
+                const wd = new Date(w.date + "T00:00:00");
                 return wd.getFullYear() === targetYear && wd <= easter;
               })
-              .map((w) => ({ date: new Date(w.date), tavg_f: Number(w.tavg_f) }))
+              .map((w) => ({ date: new Date(w.date + "T00:00:00"), tavg_f: Number(w.tavg_f) }))
               .sort((a, b) => b.date.getTime() - a.date.getTime());
 
             if (targetYearDays.length >= 5) {
