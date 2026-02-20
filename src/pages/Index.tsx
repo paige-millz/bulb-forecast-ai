@@ -164,7 +164,7 @@ const Index = () => {
               <img src={bmfLogo} alt="Blue Mountain Farms" className="h-48 sm:h-72 mx-auto -mb-16 sm:-mb-24 -mt-8 sm:-mt-16" />
               <p className="text-sm text-muted-foreground mt-3">Easter Bulb Removal Planner</p>
             </div>
-            <div className="flex items-center gap-2 py-2">
+            <div className="flex flex-wrap justify-center items-center gap-2 py-2">
               <Button variant="outline" size="sm" asChild>
                 <Link to="/weather" className="gap-1">
                   <CloudSun className="h-4 w-4" />
