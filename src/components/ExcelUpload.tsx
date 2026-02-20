@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { Upload, FileSpreadsheet, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,10 +17,42 @@ export function ExcelUpload({ onUploadComplete }: ExcelUploadProps) {
   const processFile = useCallback(async (file: File) => {
     setLoading(true);
     try {
-      const data = await file.arrayBuffer();
-      const wb = XLSX.read(data);
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows: any[] = XLSX.utils.sheet_to_json(ws);
+      const isCSV = file.name.toLowerCase().endsWith(".csv");
+      let rows: Record<string, any>[] = [];
+
+      if (isCSV) {
+        const text = await file.text();
+        const lines = text.trim().split("\n");
+        const headers = lines[0].split(",").map((h) => h.trim());
+        rows = lines.slice(1).map((line) => {
+          const cols = line.split(",").map((c) => c.trim());
+          const obj: Record<string, any> = {};
+          headers.forEach((h, i) => { obj[h] = cols[i]; });
+          return obj;
+        });
+      } else {
+        // xlsx / xls via ExcelJS
+        const buffer = await file.arrayBuffer();
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(buffer);
+        const worksheet = workbook.worksheets[0];
+
+        const headerRow = worksheet.getRow(1);
+        const headers: string[] = [];
+        headerRow.eachCell((cell) => {
+          headers.push(String(cell.value ?? "").trim());
+        });
+
+        worksheet.eachRow((row, rowNumber) => {
+          if (rowNumber === 1) return;
+          const obj: Record<string, any> = {};
+          row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+            const header = headers[colNumber - 1];
+            if (header) obj[header] = cell.value;
+          });
+          rows.push(obj);
+        });
+      }
 
       if (rows.length === 0) {
         toast({ title: "Empty file", description: "No data rows found.", variant: "destructive" });
@@ -32,8 +64,8 @@ export function ExcelUpload({ onUploadComplete }: ExcelUploadProps) {
         const bulb_type = String(row["Bulb Type"] ?? row["bulb_type"] ?? row["BulbType"] ?? "");
         const easter_raw = row["Easter Date"] ?? row["easter_date"] ?? row["EasterDate"];
         const removal_raw = row["Removal Date"] ?? row["removal_date"] ?? row["RemovalDate"];
-        const easter_date = parseExcelDate(easter_raw);
-        const removal_date = parseExcelDate(removal_raw) || null;
+        const easter_date = parseCellDate(easter_raw);
+        const removal_date = parseCellDate(removal_raw) || null;
 
         const dbeRaw = row["DBE"] ?? row["dbe"];
         let dbe: number | null = dbeRaw != null && dbeRaw !== "" ? Number(dbeRaw) : null;
@@ -42,8 +74,8 @@ export function ExcelUpload({ onUploadComplete }: ExcelUploadProps) {
         }
 
         const ship_raw = row["Ship Date"] ?? row["ship_date"];
-        const avg_temp = parseFloat(row["avg_temp_from_removal_f"] ?? row["Avg Temp From Removal F"] ?? "");
-        const degree_hours = parseFloat(row["degree_hours_above_40f"] ?? row["Degree Hours Above 40F"] ?? "");
+        const avg_temp = parseFloat(String(row["avg_temp_from_removal_f"] ?? row["Avg Temp From Removal F"] ?? ""));
+        const degree_hours = parseFloat(String(row["degree_hours_above_40f"] ?? row["Degree Hours Above 40F"] ?? ""));
 
         return {
           year,
@@ -51,7 +83,7 @@ export function ExcelUpload({ onUploadComplete }: ExcelUploadProps) {
           easter_date,
           removal_date,
           dbe,
-          ship_date: ship_raw ? parseExcelDate(ship_raw) : null,
+          ship_date: ship_raw ? parseCellDate(ship_raw) : null,
           avg_temp_from_removal_f: isNaN(avg_temp) ? null : avg_temp,
           degree_hours_above_40f: isNaN(degree_hours) ? null : degree_hours,
           yield_notes: row["yield_notes"] ?? row["Yield Notes"] ?? null,
@@ -61,17 +93,12 @@ export function ExcelUpload({ onUploadComplete }: ExcelUploadProps) {
         };
       });
 
-      // Validate: need at least year, bulb_type, and easter_date
-      // Also filter out junk rows with no removal_date AND no dbe
       const valid = records.filter(
-        (r) =>
-          r.year > 0 &&
-          r.bulb_type &&
-          r.easter_date
+        (r) => r.year > 0 && r.bulb_type && r.easter_date
       );
       const skipped = records.length - valid.length;
       if (skipped > 0) {
-        console.log(`Skipped ${skipped} rows without removal date or DBE`);
+        console.log(`Skipped ${skipped} rows without required fields`);
       }
 
       if (valid.length === 0) {
@@ -148,13 +175,20 @@ export function ExcelUpload({ onUploadComplete }: ExcelUploadProps) {
   );
 }
 
-function parseExcelDate(val: any): string {
+/** Parse an ExcelJS cell value or string into YYYY-MM-DD */
+function parseCellDate(val: any): string {
   if (!val) return "";
-  if (typeof val === "number") {
-    const d = XLSX.SSF.parse_date_code(val);
-    return `${d.y}-${String(d.m).padStart(2, "0")}-${String(d.d).padStart(2, "0")}`;
+  // ExcelJS returns JS Date objects for date cells
+  if (val instanceof Date) {
+    if (isNaN(val.getTime())) return "";
+    return val.toISOString().split("T")[0];
   }
-  const d = new Date(val);
-  if (isNaN(d.getTime())) return String(val);
-  return d.toISOString().split("T")[0];
+  // ExcelJS rich text object
+  if (typeof val === "object" && val.text) {
+    return parseCellDate(val.text);
+  }
+  // Plain string or number string
+  const d = new Date(String(val));
+  if (!isNaN(d.getTime())) return d.toISOString().split("T")[0];
+  return String(val);
 }
