@@ -1,5 +1,13 @@
 # Bulb Forecast AI
 
+## Repository Structure
+- `/src` – Frontend + modeling logic  
+- `/supabase` – Backend configuration  
+- `/public` – Static assets  
+- `/docs` – Architecture & modeling notes  
+
+---
+
 Predictive modeling system for determining optimal seasonal bulb removal timing using Growing Degree Days (GDD) and Easter date regression modeling.
 
 ## 🌱 Problem
