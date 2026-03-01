@@ -97,17 +97,22 @@ The model converts environmental variability into operationally actionable remov
 
 - Chose regression over neural networks to preserve explainability  
 - Incorporated Easter as a feature due to production dependency  
-- Prioritized deterministic outputs for operational reliability  
-- Used simplified NOAA historical datasets for initial calibration  
+- Prioritized deterministic modeling with windowed outputs for operational reliability  
+- Used OpenWeather as the primary data source for ease of integration and reliability  
 
----
+## Deployment Context
 
-## Production Deployment Notes
+- Integrated with OpenWeather API for live and historical temperature data  
+- Configured by crop type, with distinct calibration for each mix  
+- Produces removal windows (date ranges) rather than single-point date guesses, supporting probabilistic-style planning  
+- Tuned using historical removal data from production operations  
 
-- Calibrated to Blue Mountain Farms growing conditions
-- Tuned against historical removal data specific to this operation
+## Potential Extensions
 
----
+- UI to simplify calibration for new locations and crop types  
+- Additional environmental inputs beyond air temperature (e.g., light, soil temperature, humidity)  
+- Confidence-band visualization around forecast windows  
+- Alerting and notifications when a crop is projected to enter its optimal removal window  
 
 ## Broader Application
 
