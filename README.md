@@ -6,7 +6,12 @@
 - `/public` – Static assets  
 - `/docs` – Architecture & modeling notes  
 
----
+# System Architecture
+NOAA Data  
+→ GDD Aggregation  
+→ Easter Offset  
+→ Regression Model  
+→ Removal Window Output
 
 Predictive modeling system for determining optimal seasonal bulb removal timing using Growing Degree Days (GDD) and Easter date regression modeling.
 
