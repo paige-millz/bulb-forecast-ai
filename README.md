@@ -77,8 +77,19 @@ The model converts environmental variability into operationally actionable remov
 - Easter date feature integration  
 - Regression modeling  
 
-**Deployment**
-- Hosted via Lovable  
+## Deployment Context
+
+- Integrated with OpenWeather API for live and historical temperature data
+- Configured by crop type, with distinct calibration for each mix
+- Produces removal windows (date ranges) rather than single-point date guesses, supporting probabilistic-style planning
+- Tuned using historical removal data from production operations
+
+## Potential Extensions
+
+- UI to simplify calibration for new locations and crop types
+- Additional environmental inputs beyond air temperature (e.g., light, soil temperature, humidity)
+- Confidence-band visualization around forecast windows
+- Alerting and notifications when a crop is projected to enter its optimal removal window
 
 ---
 
@@ -91,12 +102,10 @@ The model converts environmental variability into operationally actionable remov
 
 ---
 
-## Future Improvements
+## Production Deployment Notes
 
-- Real-time NOAA API integration  
-- Region-specific calibration  
-- Probabilistic forecasting bands  
-- Multi-variable environmental modeling (light + humidity)  
+- Calibrated to Blue Mountain Farms growing conditions
+- Tuned against historical removal data specific to this operation
 
 ---
 
