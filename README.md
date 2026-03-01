@@ -1,67 +1,109 @@
 # Bulb Forecast AI
 
-## Repository Structure
-- `/src` – Frontend + modeling logic  
-- `/supabase` – Backend configuration  
-- `/public` – Static assets  
-- `/docs` – Architecture & modeling notes  
-
-# System Architecture
-NOAA Data  
-→ GDD Aggregation  
-→ Easter Offset  
-→ Regression Model  
-→ Removal Window Output
-
 Predictive modeling system for determining optimal seasonal bulb removal timing using Growing Degree Days (GDD) and Easter date regression modeling.
 
-## 🌱 Problem
-Seasonal bulb production cycles depend heavily on:
-- Temperature accumulation
-- Calendar timing (Easter shifts year to year)
-- Regional weather variability
+---
 
-Traditional scheduling relies on fixed calendar dates, which leads to:
-- Early or late cooler removal
-- Yield variability
-- Labor inefficiency
+## Repository Structure
 
-## 🧠 Approach
-This project models bulb readiness using:
+- `/src` – Frontend and modeling logic  
+- `/supabase` – Backend configuration  
+- `/public` – Static assets  
+- `/docs` – Architecture and modeling notes  
 
-- Growing Degree Day (GDD) accumulation
-- Historical Easter date offsets
-- Regression-based forecasting
-- Historical removal data
+---
 
-The system forecasts removal windows dynamically based on temperature progression rather than fixed dates.
+## System Architecture
 
-## 🏗 Architecture
-Frontend:
-- React + TypeScript
-- Tailwind + shadcn-ui
+### Data Flow
 
-Modeling:
-- Time-series temperature aggregation
-- GDD calculation logic
-- Easter date variable integration
-- Regression modeling
+1. NOAA historical temperature ingestion  
+2. Growing Degree Day (GDD) accumulation  
+3. Easter date feature engineering  
+4. Regression-based forecast modeling  
+5. Removal window prediction output  
 
-Deployment:
-- Hosted via Lovable
+The system forecasts removal windows dynamically based on temperature progression rather than fixed calendar dates.
 
-## ⚖️ Key Tradeoffs
-- Prioritized explainability over black-box ML
-- Deterministic regression instead of neural modeling
-- Used simplified NOAA historical temperature datasets for v1
+---
 
-## 🚀 Future Improvements
-- Real-time NOAA API integration
-- Region-specific calibration
-- Probabilistic forecasting bands
-- Multi-variable environmental modeling (light + humidity)
+## Problem
 
-## 🔬 Why This Matters
-This project demonstrates applied predictive modeling in real-world agricultural operations, translating environmental variability into actionable operational decisions.
+Seasonal bulb production cycles are temperature-dependent and calendar-sensitive.
+
+Key variables:
+- Cumulative thermal accumulation  
+- Movable holiday timing (Easter)  
+- Regional weather variance  
+
+Traditional fixed-date scheduling introduces:
+- Early or late cooler removal  
+- Yield inconsistency  
+- Labor inefficiency  
+
+---
+
+## Approach
+
+This system models bulb readiness using:
+
+- Growing Degree Day (GDD) accumulation  
+- Historical Easter date offsets  
+- Regression-based forecasting  
+- Historical removal data  
+
+The model converts environmental variability into operationally actionable removal windows.
+
+---
+
+## Model Characteristics
+
+- Deterministic regression model  
+- Temperature-based time series aggregation  
+- Feature engineering incorporating movable holiday offsets  
+- Interpretable output for operational planning  
+
+---
+
+## Architecture Details
+
+**Frontend**
+- React + TypeScript  
+- Tailwind CSS + shadcn-ui  
+
+**Modeling**
+- Time-series temperature aggregation  
+- GDD calculation logic  
+- Easter date feature integration  
+- Regression modeling  
+
+**Deployment**
+- Hosted via Lovable  
+
+---
+
+## Design Decisions
+
+- Chose regression over neural networks to preserve explainability  
+- Incorporated Easter as a feature due to production dependency  
+- Prioritized deterministic outputs for operational reliability  
+- Used simplified NOAA historical datasets for initial calibration  
+
+---
+
+## Future Improvements
+
+- Real-time NOAA API integration  
+- Region-specific calibration  
+- Probabilistic forecasting bands  
+- Multi-variable environmental modeling (light + humidity)  
+
+---
+
+## Broader Application
+
+This modeling framework generalizes to temperature-dependent production systems, harvest scheduling, and seasonal operational planning problems.
+
+---
 
 Built and maintained by Paige Miller
