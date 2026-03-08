@@ -1,123 +1,39 @@
 # Bulb Forecast AI
 
-Predictive modeling system for determining optimal seasonal bulb removal timing using Growing Degree Days (GDD) and Easter date regression modeling.
+**Predicts optimal seasonal bulb removal timing using Growing Degree Day accumulation and Easter date regression — replacing guesswork with data-driven scheduling.**
+
+Built for a 3rd-generation wholesale greenhouse operation that grows tulips, hyacinths, and other Easter bulbs. Removal timing directly impacts yield, labor efficiency, and whether product is ready for market on time.
 
 ---
 
-## Repository Structure
+## The Problem
 
-- `/src` – Frontend and modeling logic  
-- `/supabase` – Backend configuration  
-- `/public` – Static assets  
-- `/docs` – Architecture and modeling notes  
+Seasonal bulb production is temperature-dependent and tied to a movable holiday (Easter). Traditional fixed-date scheduling leads to early or late cooler removal, inconsistent yields, and wasted labor. The difference between pulling bulbs 3 days early vs. 3 days late can mean the difference between full bloom on Easter Sunday or missing the market entirely.
 
----
+## How It Works
 
-## System Architecture
+The system ingests NOAA historical temperature data and historical removal records, then:
 
-### Data Flow
+1. Computes **Growing Degree Day (GDD)** accumulation from daily temperatures
+2. Engineers features around **Easter date offsets** (which shift year to year)
+3. Runs **regression-based forecasting** to predict the optimal removal window
+4. Outputs a **recommended removal date** with confidence metrics and KPIs
 
-1. NOAA historical temperature ingestion  
-2. Growing Degree Day (GDD) accumulation  
-3. Easter date feature engineering  
-4. Regression-based forecast modeling  
-5. Removal window prediction output  
+Users can upload historical records via Excel, select bulb types, configure ship-by targets, and export recommendations as CSV or JSON. Includes a built-in AI chat assistant for interpreting results.
 
-The system forecasts removal windows dynamically based on temperature progression rather than fixed calendar dates.
+## Tech Stack
 
----
+React · TypeScript · Vite · Supabase (auth + database + edge functions) · Tailwind CSS · shadcn/ui
 
-## Problem
+## Run Locally
 
-Seasonal bulb production cycles are temperature-dependent and calendar-sensitive.
+```sh
+npm install
+npm run dev
+```
 
-Key variables:
-- Cumulative thermal accumulation  
-- Movable holiday timing (Easter)  
-- Regional weather variance  
-
-Traditional fixed-date scheduling introduces:
-- Early or late cooler removal  
-- Yield inconsistency  
-- Labor inefficiency  
+Requires a Supabase project — see `.env.example` for required environment variables.
 
 ---
 
-## Approach
-
-This system models bulb readiness using:
-
-- Growing Degree Day (GDD) accumulation  
-- Historical Easter date offsets  
-- Regression-based forecasting  
-- Historical removal data  
-
-The model converts environmental variability into operationally actionable removal windows.
-
----
-
-## Model Characteristics
-
-- Deterministic regression model  
-- Temperature-based time series aggregation  
-- Feature engineering incorporating movable holiday offsets  
-- Interpretable output for operational planning  
-
----
-
-## Architecture Details
-
-**Frontend**
-- React + TypeScript  
-- Tailwind CSS + shadcn-ui  
-
-**Modeling**
-- Time-series temperature aggregation  
-- GDD calculation logic  
-- Easter date feature integration  
-- Regression modeling  
-
-## Deployment Context
-
-- Integrated with OpenWeather API for live and historical temperature data
-- Configured by crop type, with distinct calibration for each mix
-- Produces removal windows (date ranges) rather than single-point date guesses, supporting probabilistic-style planning
-- Tuned using historical removal data from production operations
-
-## Potential Extensions
-
-- UI to simplify calibration for new locations and crop types
-- Additional environmental inputs beyond air temperature (e.g., light, soil temperature, humidity)
-- Confidence-band visualization around forecast windows
-- Alerting and notifications when a crop is projected to enter its optimal removal window
-
----
-
-## Design Decisions
-
-- Chose regression over neural networks to preserve explainability  
-- Incorporated Easter as a feature due to production dependency  
-- Prioritized deterministic modeling with windowed outputs for operational reliability  
-- Used OpenWeather as the primary data source for ease of integration and reliability  
-
-## Deployment Context
-
-- Integrated with OpenWeather API for live and historical temperature data  
-- Configured by crop type, with distinct calibration for each mix  
-- Produces removal windows (date ranges) rather than single-point date guesses, supporting probabilistic-style planning  
-- Tuned using historical removal data from production operations  
-
-## Potential Extensions
-
-- UI to simplify calibration for new locations and crop types  
-- Additional environmental inputs beyond air temperature (e.g., light, soil temperature, humidity)  
-- Confidence-band visualization around forecast windows  
-- Alerting and notifications when a crop is projected to enter its optimal removal window  
-
-## Broader Application
-
-This modeling framework generalizes to temperature-dependent production systems, harvest scheduling, and seasonal operational planning problems.
-
----
-
-Built and maintained by Paige Miller
+*Built by [Paige Miller](https://github.com/paige-millz)*
