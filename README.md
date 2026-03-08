@@ -4,6 +4,10 @@
 
 Built for a 3rd-generation wholesale greenhouse operation that grows tulips, hyacinths, and other Easter bulbs. Removal timing directly impacts yield, labor efficiency, and whether product is ready for market on time.
 
+<p align="center">
+  <img src="screenshot.png" alt="Bulb Forecast AI — Configuration & Recommendations Dashboard" width="700"/>
+</p>
+
 ---
 
 ## The Problem
