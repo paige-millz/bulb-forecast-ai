@@ -1,4 +1,4 @@
-project_id = "qsmifvwbirhfjznrlonc"
+project_id = "YOUR_SUPABASE_PROJECT_ID"
 
 [functions.bulb-recommendations]
 verify_jwt = false
